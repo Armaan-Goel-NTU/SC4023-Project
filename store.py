@@ -8,7 +8,7 @@ class LengthException(Exception):
 class EmptyException(Exception):
     pass
 
-class ColumnStore():
+class ColumnStore:
     def __init__(self):
         self.critical = [0, 1, 6, 9]
 
@@ -56,7 +56,3 @@ class ColumnStore():
     
     def get_resale_price(self, pos):
         return self.resale_price[pos]
-    
-
-
-        
