@@ -1,3 +1,7 @@
+from Mapping.flat_model_mapping import flat_model_mapping_string
+from Mapping.flat_type_mapping import flat_type_mapping_string
+from Mapping.storey_range_mapping import storey_range_mapping_string
+
 class LengthException(Exception):
     pass
 
@@ -29,12 +33,12 @@ class ColumnStore():
 
         self.month.append(tokens[0])
         self.town.append(tokens[1])
-        self.flat_type.append(tokens[2])
+        self.flat_type.append(flat_type_mapping_string[tokens[2]])
         self.block.append(tokens[3])
         self.street_name.append(tokens[4])
-        self.storey_range.append(tokens[5])
+        self.storey_range.append(storey_range_mapping_string[tokens[5]])
         self.floor_area_sqm.append(float(tokens[6]))
-        self.flat_model.append(tokens[7])
+        self.flat_model.append(flat_model_mapping_string[tokens[7]])
         self.lease_commence_date.append(tokens[8])
         self.resale_price.append(float(tokens[9]))
     
