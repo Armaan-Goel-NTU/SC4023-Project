@@ -63,4 +63,3 @@ query.clear_results()
 print("\n---------SHARED SCANS---------")
 query.shared_scan(YEAR, MONTH1, MONTH2, TOWN)
 print(query.get_results())
-
