@@ -83,7 +83,7 @@ class QueryHelper():
             total_price += price
         
         self.add_result(year, month1, town, "Average Price", total_price/len(pos4))
-
+    """
     def stddev_price(self, year, month1, month2, town):
         pos2 = []
         for pos in range(self.store.get_size()):
@@ -126,7 +126,53 @@ class QueryHelper():
         stddev = math.sqrt(stddev)
 
         self.add_result(year, month1, town, "Standard Deviation of Price", stddev)
-    
+    """
+    def stddev_price(self, year, month1, month2, town):
+        """
+        Calculation of standard deviation using single reference to pos4 instead of 2 passes of avg then stddev.
+        Credits: https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/
+        """
+        pos2 = []
+        for pos in range(self.store.get_size()):
+            month = self.store.get_month(pos)
+            y = int(month[:4])
+            m = int(month[-2:])
+            if y == year and m >= month1 and m <= month2:
+                pos2.append(pos)
+        
+        pos3 = []
+        for pos in pos2:
+            t = self.store.get_town(pos)
+            if t == town:
+                pos3.append(pos)
+            
+        pos4 = []
+        for pos in pos3:
+            sqm = self.store.get_floor_area_sqm(pos)
+            if sqm >= 80:
+                pos4.append(pos)
+        
+        if len(pos4) == 0:
+            self.add_result(year, month1, town, "Standard Deviation of Price", "No result")
+            return
+        
+        # Welford's Algorithm
+        count = 0
+        average = 0
+        ssd = 0  
+        for pos in pos4:
+            count += 1
+            price = self.store.get_resale_price(pos)
+            diff = price - average
+            average += diff
+            updated_diff = price - average
+            ssd = diff * updated_diff
+
+        n = len(pos4)
+        stddev = math.sqrt(ssd/n)
+
+        self.add_result(year, month1, town, "Standard Deviation of Price", stddev)
+
     def minimum_price_per_sqm(self, year, month1, month2, town):
         pos2 = []
         for pos in range(self.store.get_size()):
