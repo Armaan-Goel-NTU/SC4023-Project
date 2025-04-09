@@ -239,7 +239,12 @@ class QueryHelper():
         min_price = math.inf
         min_price_per_sqm = math.inf
         total_price = 0
+
+        count = 0
+        average = 0
+        ssd = 0  
         for pos in pos4:
+            count += 1
             price = self.store.get_resale_price(pos)
             total_price += price
             if price < min_price:
@@ -249,15 +254,7 @@ class QueryHelper():
             if price_per_sqm < min_price_per_sqm:
                 min_price_per_sqm = price_per_sqm
 
-        # Welford's Algorithm
-        count = 0
-        average = 0
-        total_price = 0
-        ssd = 0  
-        for pos in pos4:
-            count += 1
-            price = self.store.get_resale_price(pos)
-            total_price += price
+            # Welford's Algorithm
             diff = price - average
             average += diff
             updated_diff = price - average
