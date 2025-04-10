@@ -2,7 +2,7 @@ import math
 
 from store import ColumnStore
 
-class QueryHelper():
+class QueryHelper:
     def __init__(self, store: ColumnStore):
         self.store = store
         self.clear_results()
@@ -430,7 +430,6 @@ class QueryHelper():
         self.add_result(year, month1, town, "Average Price", average_price)
         self.add_result(year, month1, town, "Standard Deviation of Price", stddev)
         self.add_result(year, month1, town, "Minimum Price per Square Meter", min_price_per_sqm)
-
 
     def vector_a_time(self, year, month1, month2, town, vector_size = 5000):
         list_of_pos4 = [[], [], [], []]  #[min, avg, stddev, minpsqm]

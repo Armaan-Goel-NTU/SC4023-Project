@@ -1,10 +1,15 @@
+from Enum.FLAT_MODEL import FlatModel
+from Enum.FLAT_TYPE import FlatType
+from Enum.STOREY_RANGE import StoreyRange
+
+
 class LengthException(Exception):
     pass
 
 class EmptyException(Exception):
     pass
 
-class ColumnStore():
+class ColumnStore:
     def __init__(self):
         self.critical = [0, 1, 6, 9]
 
@@ -29,12 +34,12 @@ class ColumnStore():
 
         self.month.append(tokens[0])
         self.town.append(tokens[1])
-        self.flat_type.append(tokens[2])
+        self.flat_type.append(FlatType.get_index_by_flat_type(tokens[2]))
         self.block.append(tokens[3])
         self.street_name.append(tokens[4])
-        self.storey_range.append(tokens[5])
+        self.storey_range.append(StoreyRange.get_index_by_storey_range(tokens[5]))
         self.floor_area_sqm.append(float(tokens[6]))
-        self.flat_model.append(tokens[7])
+        self.flat_model.append(FlatModel.get_index_by_flat_model(tokens[7]))
         self.lease_commence_date.append(tokens[8])
         self.resale_price.append(float(tokens[9]))
     
@@ -52,7 +57,3 @@ class ColumnStore():
     
     def get_resale_price(self, pos):
         return self.resale_price[pos]
-    
-
-
-        
