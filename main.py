@@ -63,3 +63,10 @@ query.clear_results()
 print("\n---------SHARED SCANS---------")
 query.shared_scan(YEAR, MONTH1, MONTH2, TOWN)
 print(query.get_results())
+
+query.clear_results()
+
+print("\n---------VECTOR AT A TIME---------")
+query.vector_a_time(YEAR, MONTH1, MONTH2, TOWN)  # By default vector_size = 5000
+print(query.get_results())
+
