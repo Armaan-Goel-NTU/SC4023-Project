@@ -173,8 +173,7 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Excel files
-ResalePrice.xlsx
+# Excel lock file
 ~$*.xlsx
 
 # MacOS
