@@ -59,7 +59,7 @@ class QueryHelper:
         for pos in pos_list:
             if use_zone_map:
                 zmin, zmax = self.store.get_area_zmap_entry(pos)
-                if not (zmin <= 80 <= zmax):
+                if zmax < 80:
                     continue
 
             sqm = self.store.get_floor_area_sqm(pos)
