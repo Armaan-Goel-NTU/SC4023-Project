@@ -39,7 +39,6 @@ class ColumnStore:
         self.area_zone_map = []
 
         self.month_index = [set() for _ in range(121)]
-        self.town_index = [set() for _ in range(26)]
 
     def clear_disk(self):
         self.flush_write_buffers()
@@ -121,7 +120,6 @@ class ColumnStore:
             self.month_index[tokens[0] - 24168].add(
                 self.write_pointers[0].tell() // BLOCK_SIZE
             )
-            self.town_index[tokens[1]].add(self.write_pointers[1].tell() // BLOCK_SIZE)
 
     def get_size(self):
         return self.size
@@ -175,10 +173,6 @@ class ColumnStore:
 
     def get_area_zmap_entry(self, pos):
         return self.get_zonemap_item(pos, 6, self.area_zone_map)
-
-    def get_pos_has_town(self, pos, town):
-        block_number = self.pos_to_block(pos, 1)
-        return block_number in self.town_index[town]
 
     def get_pos_has_month(self, pos, month1, month2):
         block_number = self.pos_to_block(pos, 0)

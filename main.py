@@ -201,16 +201,8 @@ with open(DATAFILE, "r") as f:
     store.flush_write_buffers()
     store.print_storage_stats()
 
-    # print(len(store.town_index[1]))
-    # tot = 0
-    # for i in store.town_index[1]:
-    #     tot += len(store.get_pos_in_block(i, 1))
-
-    # print(tot, tot / 4096)
-
-    # exit()
     print(
-        f"Running queries for {TOWN_NAME} from months {int(MATRIC[-3])} to {int(MATRIC[-3])+1} in {YEAR}"
+        f"\n\nRunning queries for {TOWN_NAME} from months {int(MATRIC[-3])} to {int(MATRIC[-3])+1} in {YEAR}"
     )
 
     print("\n---------FILTER PERMUTATIONS (ZM OFF; IDX OFF)---------")

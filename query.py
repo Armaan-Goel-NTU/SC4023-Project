@@ -39,14 +39,10 @@ class QueryHelper:
 
         return pos2
 
-    def filter_town(self, pos_list, town, use_zone_map=False, use_index=False):
+    def filter_town(self, pos_list, town, use_zone_map=False):
         pos2 = []
 
         for pos in pos_list:
-            if use_index:
-                if not self.store.get_pos_has_town(pos, town):
-                    continue
-
             if use_zone_map:
                 zval = self.store.get_town_zmap_entry(pos)
                 if not (zval & (1 << town)):
@@ -73,8 +69,8 @@ class QueryHelper:
         return pos2
 
     def filter(self, month1, town, start_idx, stop_idx):
-        pos2 = self.filter_month(range(start_idx, stop_idx), month1)
-        pos3 = self.filter_town(pos2, town)
+        pos2 = self.filter_month(range(start_idx, stop_idx), month1, True)
+        pos3 = self.filter_town(pos2, town, True)
         pos4 = self.filter_area(pos3)
         return pos4
 
@@ -94,7 +90,7 @@ class QueryHelper:
                     data, month1, use_index=use_index
                 ),
                 "town": lambda data: self.filter_town(
-                    data, town, use_zone_map=use_zone_map, use_index=use_index
+                    data, town, use_zone_map=use_zone_map
                 ),
                 "area": lambda data: self.filter_area(data, use_zone_map=use_zone_map),
             }
