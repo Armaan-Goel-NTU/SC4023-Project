@@ -2,25 +2,22 @@ import sys
 import os
 import re
 
-from pathlib import Path
-
 from store import ColumnStore, StorageException
 from query import QueryHelper
 from Mapping.default_mappings import *
 from Mapping.enum_mappings import *
 from Mapping.special_mappings import *
 
-source = Path(__file__).resolve().parent
-DATAFILE = os.path.join(source, "ResalePricesSingapore.csv")
+if len(sys.argv) != 3:
+    print("Usage: python3 main.py <CSV file> <Matric>")
+    sys.exit(1)
+
+DATAFILE = sys.argv[1]
 if not os.path.isfile(DATAFILE):
     print(f"{DATAFILE} not found!")
     sys.exit(1)
 
-if len(sys.argv) != 2:
-    print("Usage: python3 main.py <Matric>")
-    sys.exit(1)
-
-MATRIC = sys.argv[1]
+MATRIC = sys.argv[2]
 pattern = re.compile(r'[A-Z][0-9]{7}[A-Z]')
 
 if not re.match(pattern=pattern, string=MATRIC):
@@ -217,6 +214,10 @@ with open(DATAFILE, "r") as f:
     query = QueryHelper(store=store)
     query.test_filter_permutations(MONTH, TOWN, False, True)
 
+    print("\n---------FILTER PERMUTATIONS (ZM ON; IDX ON)---------")
+    query = QueryHelper(store=store)
+    query.test_filter_permutations(MONTH, TOWN, True, True)
+
     reads = 0
     print("\n---------INDIVIDUAL SCANS---------")
     query.minimum_price(MONTH, TOWN)
@@ -235,7 +236,10 @@ with open(DATAFILE, "r") as f:
     reads += store.reads
     print(f"{store.reads} block reads for min price/sqm")
     print(f"{reads} total block reads")
-    print(query.get_results())
+    results = query.get_results()
+    with open(f"ScanResult_{MATRIC}.csv", "w") as g:
+        g.write(results)
+    print(results)
 
     query.clear_results()
 

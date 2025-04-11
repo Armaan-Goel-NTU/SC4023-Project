@@ -179,4 +179,8 @@ cython_debug/
 # MacOS
 .DS_Store
 
+# Disk storage files
 _*
+
+# Scan results
+ScanResult_*.csv
