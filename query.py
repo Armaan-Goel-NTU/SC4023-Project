@@ -1,4 +1,5 @@
 import math
+import itertools
 
 from store import ColumnStore
 
@@ -8,86 +9,85 @@ class QueryHelper:
         self.clear_results()
 
     def get_results(self):
-        return "\n".join(self.results)
+        return "Year,Month,town,Category,Value\n" + "\n".join(
+            [self.results[cat] for cat in self.results]
+        )
 
     def clear_results(self):
-        self.results = ["Year,Month,town,Category,Value"]
+        self.results = {}
 
     def add_result(self, month1, town, category, value):
         town = self.store.unmap_town(town)
         month = self.store.unmap_month(month1)
         year = month[:4]
         month = month[-2:]
-        value = str(round(value, 2))
-        self.results.append(",".join([year, month, town, category, value]))
+        if type(value) == float:
+            value = str(round(value, 2))
+        self.results[category] = ",".join([year, month, town, category, value])
 
-    """
-    def minimum_price(self, month1, town, vector_range=[]):
+    def filter_month(self, pos_list, month1):
         pos2 = []
-
-        for pos in range(self.store.get_size()):
+        for pos in pos_list:
             month = self.store.get_month(pos)
             if month1 <= month <= month1 + 1:
                 pos2.append(pos)
-        
-        pos3 = []
-        for pos in pos2:
+
+        return pos2
+
+    def filter_town(self, pos_list, town):
+        pos2 = []
+        for pos in pos_list:
             t = self.store.get_town(pos)
             if t == town:
-                pos3.append(pos)
-            
-        pos4 = []
-        for pos in pos3:
+                pos2.append(pos)
+
+        return pos2
+
+    def filter_area(self, pos_list):
+        pos2 = []
+        for pos in pos_list:
             sqm = self.store.get_floor_area_sqm(pos)
             if sqm >= 80:
-                pos4.append(pos)
-        
+                pos2.append(pos)
+
+        return pos2
+
+    def filter(self, month1, town, start_idx, stop_idx):
+        pos2 = self.filter_month(range(start_idx, stop_idx), month1)
+        pos3 = self.filter_town(pos2, town)
+        pos4 = self.filter_area(pos3)
+        return pos4
+
+    def test_filter_permutations(self, month1, town):
+        filters = {
+            "month": lambda data: self.filter_month(data, month1),
+            "town": lambda data: self.filter_town(data, town),
+            "area": lambda data: self.filter_area(data),
+        }
+
+        row_format = "{:>15}" * 2
+        print(row_format.format("Permutation", "Blocks"))
+
+        data_range = range(self.store.get_size())
+        permutations = list(itertools.permutations(["month", "town", "area"]))
+
+        for perm in permutations:
+            self.store.clear_read_state()
+            filtered = data_range
+            for step in perm:
+                filtered = filters[step](filtered)
+            print(row_format.format(str(perm), self.store.reads))
+
+    def minimum_price(self, month1, town, start_idx=0, stop_idx=None):
+        if stop_idx is None:
+            self.store.clear_read_state()
+            stop_idx = self.store.get_size()
+
+        pos4 = self.filter(month1, town, start_idx, stop_idx)
+
         if len(pos4) == 0:
             self.add_result(month1, town, "Minimum Price", "No result")
-            return
-
-        min_price = math.inf
-        for pos in pos4:
-            price = self.store.get_resale_price(pos)
-            if price < min_price:
-                min_price = price
-        
-        self.add_result(month1, town, "Minimum Price", min_price)
-    """
-
-    def minimum_price(self, month1, town, vector_range=[]):
-        pos2 = []
-
-        if vector_range:
-            start_idx, stop_idx = vector_range
-            for pos in range(start_idx, stop_idx):
-                month = self.store.get_month(pos)
-                if month1 <= month <= month1 + 1:
-                    pos2.append(pos)
-        else:
-            for pos in range(self.store.get_size()):
-                month = self.store.get_month(pos)
-                if month1 <= month <= month1 + 1:
-                    pos2.append(pos)
-
-        pos3 = []
-        for pos in pos2:
-            t = self.store.get_town(pos)
-            if t == town:
-                pos3.append(pos)
-
-        pos4 = []
-        for pos in pos3:
-            sqm = self.store.get_floor_area_sqm(pos)
-            if sqm >= 80:
-                pos4.append(pos)
-
-        if len(pos4) == 0 and vector_range == []:
-            self.add_result(month1, town, "Minimum Price", "No result")
-            return
-
-        if vector_range:
-            return pos4
+            return math.inf
 
         min_price = math.inf
         for pos in pos4:
@@ -96,72 +96,18 @@ class QueryHelper:
                 min_price = price
 
         self.add_result(month1, town, "Minimum Price", min_price)
+        return min_price
 
-    """
-    def average_price(self, month1, town):
-        pos2 = []
-        for pos in range(self.store.get_size()):
-            month = self.store.get_month(pos)
-            if month1 <= month <= month1 + 1:
-                pos2.append(pos)
-        
-        pos3 = []
-        for pos in pos2:
-            t = self.store.get_town(pos)
-            if t == town:
-                pos3.append(pos)
-            
-        pos4 = []
-        for pos in pos3:
-            sqm = self.store.get_floor_area_sqm(pos)
-            if sqm >= 80:
-                pos4.append(pos)
-        
+    def average_price(self, month1, town, start_idx=0, stop_idx=None):
+        if stop_idx is None:
+            self.store.clear_read_state()
+            stop_idx = self.store.get_size()
+
+        pos4 = self.filter(month1, town, start_idx, stop_idx)
+
         if len(pos4) == 0:
             self.add_result(month1, town, "Average Price", "No result")
-            return
-        
-        total_price = 0
-        for pos in pos4:
-            price = self.store.get_resale_price(pos)
-            total_price += price
-        
-        self.add_result(month1, town, "Average Price", total_price/len(pos4))
-    """
-
-    def average_price(self, month1, town, vector_range=[]):
-        pos2 = []
-
-        if vector_range != []:
-            start_idx, stop_idx = vector_range
-            for pos in range(start_idx, stop_idx):
-                month = self.store.get_month(pos)
-                if month1 <= month <= month1 + 1:
-                    pos2.append(pos)
-        else:
-            for pos in range(self.store.get_size()):
-                month = self.store.get_month(pos)
-                if month1 <= month <= month1 + 1:
-                    pos2.append(pos)
-
-        pos3 = []
-        for pos in pos2:
-            t = self.store.get_town(pos)
-            if t == town:
-                pos3.append(pos)
-
-        pos4 = []
-        for pos in pos3:
-            sqm = self.store.get_floor_area_sqm(pos)
-            if sqm >= 80:
-                pos4.append(pos)
-
-        if len(pos4) == 0 and vector_range == []:
-            self.add_result(month1, town, "Average Price", "No result")
-            return
-
-        if vector_range:
-            return pos4
+            return 0, 0
 
         total_price = 0
         for pos in pos4:
@@ -169,88 +115,22 @@ class QueryHelper:
             total_price += price
 
         self.add_result(month1, town, "Average Price", total_price / len(pos4))
+        return total_price, len(pos4)
 
-    """
-    def stddev_price(self, month1, town):
-        pos2 = []
-        for pos in range(self.store.get_size()):
-            month = self.store.get_month(pos)
-            if month1 <= month <= month1 + 1:
-                pos2.append(pos)
-        
-        pos3 = []
-        for pos in pos2:
-            t = self.store.get_town(pos)
-            if t == town:
-                pos3.append(pos)
-            
-        pos4 = []
-        for pos in pos3:
-            sqm = self.store.get_floor_area_sqm(pos)
-            if sqm >= 80:
-                pos4.append(pos)
-        
-        if len(pos4) == 0:
-            self.add_result(month1, town, "Standard Deviation of Price", "No result")
-            return
-        
-        total_price = 0
-        for pos in pos4:
-            price = self.store.get_resale_price(pos)
-            total_price += price
-
-        n = len(pos4)
-        average = total_price/n
-
-        stddev = 0
-        for pos in pos4:
-            price = self.store.get_resale_price(pos)
-            stddev += (price - average) ** 2
-        
-        stddev /= n
-        stddev = math.sqrt(stddev)
-
-        self.add_result(month1, town, "Standard Deviation of Price", stddev)
-    """
-
-    def stddev_price(self, month1, town, vector_range=[]):
+    def stddev_price(self, month1, town, start_idx=0, stop_idx=None):
+        if stop_idx is None:
+            self.store.clear_read_state()
+            stop_idx = self.store.get_size()
         """
         Calculation of standard deviation using single reference to pos4 instead of 2 passes of avg then stddev.
         Credits: https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/
         """
 
-        pos2 = []
+        pos4 = self.filter(month1, town, start_idx, stop_idx)
 
-        if vector_range != []:
-            start_idx, stop_idx = vector_range
-            for pos in range(start_idx, stop_idx):
-                month = self.store.get_month(pos)
-                if month1 <= month <= month1 + 1:
-                    pos2.append(pos)
-        else:
-            for pos in range(self.store.get_size()):
-                month = self.store.get_month(pos)
-                if month1 <= month <= month1 + 1:
-                    pos2.append(pos)
-
-        pos3 = []
-        for pos in pos2:
-            t = self.store.get_town(pos)
-            if t == town:
-                pos3.append(pos)
-
-        pos4 = []
-        for pos in pos3:
-            sqm = self.store.get_floor_area_sqm(pos)
-            if sqm >= 80:
-                pos4.append(pos)
-
-        if len(pos4) == 0 and vector_range == []:
+        if len(pos4) == 0:
             self.add_result(month1, town, "Standard Deviation of Price", "No result")
-            return
-
-        if vector_range:
-            return pos4
+            return 0, 0, 0
 
         # Welford's Algorithm
         count = 0
@@ -264,79 +144,20 @@ class QueryHelper:
             updated_diff = price - average
             ssd += diff * updated_diff
 
-        n = len(pos4)
-        stddev = math.sqrt(ssd/n)
-
+        stddev = math.sqrt(ssd / count)
         self.add_result(month1, town, "Standard Deviation of Price", stddev)
+        return count, average, ssd
 
-    """
-    def minimum_price_per_sqm(self, month1, town):
-        pos2 = []
-        for pos in range(self.store.get_size()):
-            month = self.store.get_month(pos)
-            if month1 <= month <= month1 + 1:
-                pos2.append(pos)
-        
-        pos3 = []
-        for pos in pos2:
-            t = self.store.get_town(pos)
-            if t == town:
-                pos3.append(pos)
-            
-        pos4 = []
-        for pos in pos3:
-            sqm = self.store.get_floor_area_sqm(pos)
-            if sqm >= 80:
-                pos4.append(pos)
-        
+    def minimum_price_per_sqm(self, month1, town, start_idx=0, stop_idx=None):
+        if stop_idx is None:
+            self.store.clear_read_state()
+            stop_idx = self.store.get_size()
+
+        pos4 = self.filter(month1, town, start_idx, stop_idx)
+
         if len(pos4) == 0:
             self.add_result(month1, town, "Minimum Price per Square Meter", "No result")
-            return
-        
-        min_price_per_sqm = math.inf
-        for pos in pos4:
-            price = self.store.get_resale_price(pos)
-            sqm = self.store.get_floor_area_sqm(pos)
-            price_per_sqm = price / sqm
-            if price_per_sqm < min_price_per_sqm:
-                min_price_per_sqm = price_per_sqm
-
-        self.add_result(month1, town, "Minimum Price per Square Meter", min_price_per_sqm)
-    """
-
-    def minimum_price_per_sqm(self, month1, town, vector_range=[]):
-        pos2 = []
-
-        if vector_range != []:
-            start_idx, stop_idx = vector_range
-            for pos in range(start_idx, stop_idx):
-                month = self.store.get_month(pos)
-                if month1 <= month <= month1 + 1:
-                    pos2.append(pos)
-        else:
-            for pos in range(self.store.get_size()):
-                month = self.store.get_month(pos)
-                if month1 <= month <= month1 + 1:
-                    pos2.append(pos)
-
-        pos3 = []
-        for pos in pos2:
-            t = self.store.get_town(pos)
-            if t == town:
-                pos3.append(pos)
-
-        pos4 = []
-        for pos in pos3:
-            sqm = self.store.get_floor_area_sqm(pos)
-            if sqm >= 80:
-                pos4.append(pos)
-
-        if len(pos4) == 0 and vector_range == []:
-            self.add_result(month1, town, "Minimum Price per Square Meter", "No result")
-            return
-
-        if vector_range:
-            return pos4
+            return math.inf
 
         min_price_per_sqm = math.inf
         for pos in pos4:
@@ -349,25 +170,12 @@ class QueryHelper:
         self.add_result(
             month1, town, "Minimum Price per Square Meter", min_price_per_sqm
         )
+        return min_price_per_sqm
 
     def shared_scan(self, month1, town):
-        pos2 = []
-        for pos in range(self.store.get_size()):
-            month = self.store.get_month(pos)
-            if month1 <= month <= month1 + 1:
-                pos2.append(pos)
+        self.store.clear_read_state()
 
-        pos3 = []
-        for pos in pos2:
-            t = self.store.get_town(pos)
-            if t == town:
-                pos3.append(pos)
-
-        pos4 = []
-        for pos in pos3:
-            sqm = self.store.get_floor_area_sqm(pos)
-            if sqm >= 80:
-                pos4.append(pos)
+        pos4 = self.filter(month1, town, 0, self.store.get_size())
 
         if len(pos4) == 0:
             self.add_result(month1, town, "Minimum Price", "No result")
@@ -400,9 +208,8 @@ class QueryHelper:
             updated_diff = price - average
             ssd += diff * updated_diff
 
-        n = len(pos4)
-        stddev = math.sqrt(ssd/n)
-        average_price = total_price/n
+        stddev = math.sqrt(ssd / count)
+        average_price = total_price / count
 
         self.add_result(month1, town, "Minimum Price", min_price)
         self.add_result(month1, town, "Average Price", average_price)
@@ -411,103 +218,75 @@ class QueryHelper:
             month1, town, "Minimum Price per Square Meter", min_price_per_sqm
         )
 
-    def vector_a_time(self, month1, town, vector_size=5000):
-        list_of_pos4 = [[], [], [], []]  #[min, avg, stddev, minpsqm]
+    def vector_a_time(self, month1, town, vector_size=32):
+        self.store.clear_read_state()
         store_size = self.store.get_size()
 
-        for vector_start in range(0, store_size, vector_size):
-            if vector_start+vector_size < store_size:
-                min_pos4 = self.minimum_price(
-                    month1, town, [vector_start, vector_start + vector_size]
-                )
-                avg_pos4 = self.average_price(
-                    month1, town, [vector_start, vector_start + vector_size]
-                )
-                stddev_pos4 = self.stddev_price(
-                    month1, town, [vector_start, vector_start + vector_size]
-                )
-                minpsqm_pos4 = self.minimum_price_per_sqm(
-                    month1, town, [vector_start, vector_start + vector_size]
-                )
-            else:
-                min_pos4 = self.minimum_price(
-                    month1, town, [vector_start, store_size - 1]
-                )
-                avg_pos4 = self.average_price(
-                    month1, town, [vector_start, store_size - 1]
-                )
-                stddev_pos4 = self.stddev_price(
-                    month1, town, [vector_start, store_size - 1]
-                )
-                minpsqm_pos4 = self.minimum_price_per_sqm(
-                    month1, town, [vector_start, store_size - 1]
-                )
+        min_price = math.inf
+        price_sum, price_count = 0, 0
+        min_price_per_sqm = math.inf
 
-            if min_pos4:
-                list_of_pos4[0].extend(min_pos4)
-            if avg_pos4:
-                list_of_pos4[1].extend(avg_pos4)
-            if stddev_pos4:
-                list_of_pos4[2].extend(stddev_pos4)
-            if minpsqm_pos4:
-                list_of_pos4[3].extend(minpsqm_pos4)
+        stddev_count, stddev_average, stddev_ssd = 0, 0, 0
+
+        for vector_start in range(0, store_size, vector_size):
+            vector_stop = store_size
+            if vector_start + vector_size <= store_size:
+                vector_stop = vector_start + vector_size
+
+            batch_min_price = self.minimum_price(
+                month1, town, vector_start, vector_stop
+            )
+            batch_price_sum, batch_price_count = self.average_price(
+                month1, town, vector_start, vector_stop
+            )
+            batch_stddev_count, batch_stddev_average, batch_stddev_ssd = (
+                self.stddev_price(month1, town, vector_start, vector_stop)
+            )
+            batch_min_price_per_sqm = self.minimum_price_per_sqm(
+                month1, town, vector_start, vector_stop
+            )
+
+            min_price = min(min_price, batch_min_price)
+
+            price_sum += batch_price_sum
+            price_count += batch_price_count
+
+            if batch_stddev_count > 0:
+                delta = batch_stddev_average - stddev_average
+                new_count = stddev_count + batch_stddev_count
+                stddev_average += delta * batch_stddev_count / new_count
+                stddev_ssd += (
+                    batch_stddev_ssd
+                    + delta * delta * stddev_count * batch_stddev_count / new_count
+                )
+                stddev_count = new_count
+
+            min_price_per_sqm = min(min_price_per_sqm, batch_min_price_per_sqm)
 
         # min
-        if list_of_pos4[0] == []:
+        if min_price == math.inf:
             self.add_result(month1, town, "Minimum Price", "No result")
         else:
-            min_price = math.inf
-            for pos in list_of_pos4[0]:
-                price = self.store.get_resale_price(pos)
-                if price < min_price:
-                    min_price = price
-
             self.add_result(month1, town, "Minimum Price", min_price)
 
         # avg
-        if list_of_pos4[1] == []:
+        if price_count == 0:
             self.add_result(month1, town, "Average Price", "No result")
         else:
-            total_price = 0
-            for pos in list_of_pos4[1]:
-                price = self.store.get_resale_price(pos)
-                total_price += price
-
-            self.add_result(
-                month1, town, "Average Price", total_price / len(list_of_pos4[1])
-            )
+            self.add_result(month1, town, "Average Price", price_sum / price_count)
 
         # stddev
-        if list_of_pos4[2] == []:
-            self.add_result(month1, town, "Standard Deviation of Price", stddev)
+        if stddev_count == 0:
+            self.add_result(month1, town, "Standard Deviation of Price", "No result")
         else:
-            count = 0
-            average = 0
-            ssd = 0  
-            for pos in list_of_pos4[2]:
-                count += 1
-                price = self.store.get_resale_price(pos)
-                diff = price - average
-                average += diff/count
-                updated_diff = price - average
-                ssd += diff * updated_diff
-
-            stddev = math.sqrt(ssd/count)
-
+            variance = stddev_ssd / stddev_count
+            stddev = math.sqrt(variance)
             self.add_result(month1, town, "Standard Deviation of Price", stddev)
 
         # min per sqm
-        if list_of_pos4[3] == []:
+        if min_price_per_sqm == math.inf:
             self.add_result(month1, town, "Minimum Price per Square Meter", "No result")
         else:
-            min_price_per_sqm = math.inf
-            for pos in list_of_pos4[3]:
-                price = self.store.get_resale_price(pos)
-                sqm = self.store.get_floor_area_sqm(pos)
-                price_per_sqm = price / sqm
-                if price_per_sqm < min_price_per_sqm:
-                    min_price_per_sqm = price_per_sqm
-
             self.add_result(
                 month1, town, "Minimum Price per Square Meter", min_price_per_sqm
             )

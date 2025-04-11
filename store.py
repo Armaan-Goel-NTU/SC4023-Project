@@ -1,29 +1,71 @@
+from pathlib import Path
+import os
 from Mapping.mapper import MapException, Mapper
 
+BLOCK_SIZE = 4096
 
 class StorageException(Exception):
     pass
 
-
 class ColumnStore:
 
-    def __init__(self, critical, mappings: list[Mapper]):
+    def __init__(self, columns, mappings: list[Mapper], critical):
+        if len(mappings) != len(columns):
+            raise StorageException(
+                f"Number of columns {len(columns)} must match number of mappings {len(self.mappings)}."
+            )
+
         self.critical = critical
         self.mappings = mappings
+        self.size = 0
+        self.reads = 0
 
-        if len(self.mappings) != 10:
-            raise StorageException(f"Expected 10 mappings, got {len(self.mappings)}")
+        source = Path(__file__).resolve().parent
+        self.columns = [os.path.join(source, f"_{c}") for c in columns]
 
-        self.month = []
-        self.town = []
-        self.flat_type = []
-        self.block = []
-        self.street_name = []
-        self.storey_range = []
-        self.floor_area_sqm = []
-        self.flat_model = []
-        self.lease_commence_date = []
-        self.resale_price = []
+        self.write_pointers = [open(c, "wb") for c in self.columns]
+        self.write_buffers = [b""] * len(columns)
+
+        self.read_pointers = [None] * len(columns)
+        self.read_buffers = [b""] * len(columns)
+
+    def clear_disk(self):
+        self.flush_write_buffers()
+        self.clear_read_state()
+        for column in self.columns:
+            if os.path.isfile(column):
+                os.remove(column)
+
+    def clear_read_state(self):
+        self.reads = 0
+        for fp in self.read_pointers:
+            if fp is not None:
+                fp.close()
+
+        self.read_pointers = [None] * len(self.columns)
+        self.read_buffers = [b""] * len(self.columns)
+
+    def flush_write_buffer(self, i):
+        if self.write_buffers[i] == b"":
+            return
+
+        self.write_pointers[i].write(self.write_buffers[i].ljust(4096, b"\x00"))
+        self.write_buffers[i] = b""
+
+    def flush_write_buffers(self):
+        for i in range(len(self.write_buffers)):
+            self.flush_write_buffer(i)
+            self.write_pointers[i].close()
+
+    def print_storage_stats(self):
+        row_format = "{:>15}" * 2
+        print(row_format.format("Column", "Blocks"))
+        total = 0
+        for column in self.columns:
+            size = os.path.getsize(column) // BLOCK_SIZE
+            print(row_format.format(os.path.basename(column)[1:], size))
+            total += size
+        print(row_format.format("Total", total))
 
     def add_entry(self, tokens):
         if len(tokens) != len(self.mappings):
@@ -41,31 +83,45 @@ class ColumnStore:
         except MapException as e:
             raise StorageException(str(e))
 
-        self.month.append(tokens[0])
-        self.town.append(tokens[1])
-        self.flat_type.append(tokens[2])
-        self.block.append(tokens[3])
-        self.street_name.append(tokens[4])
-        self.storey_range.append(tokens[5])
-        self.floor_area_sqm.append(tokens[6])
-        self.flat_model.append(tokens[7])
-        self.lease_commence_date.append(tokens[8])
-        self.resale_price.append(tokens[9])
+        self.size += 1
+        for i in range(len(tokens)):
+            packed = self.mappings[i].to_bytes(tokens[i])
+
+            if len(self.write_buffers[i]) + self.mappings[i].mapped_size() > BLOCK_SIZE:
+                self.flush_write_buffer(i)
+
+            self.write_buffers[i] += packed
 
     def get_size(self):
-        return len(self.month)
+        return self.size
+
+    def get_item(self, pos, i):
+        items_per_page = BLOCK_SIZE // self.mappings[i].mapped_size()
+        block_number = pos // items_per_page
+        if self.read_pointers[i] is None:
+            self.read_pointers[i] = open(self.columns[i], "rb")
+
+        if self.read_pointers[i].tell() != (block_number + 1) * BLOCK_SIZE:
+            self.reads += 1
+            self.read_pointers[i].seek(block_number * BLOCK_SIZE)
+            self.read_buffers[i] = self.read_pointers[i].read(BLOCK_SIZE)
+
+        start = (pos % items_per_page) * self.mappings[i].mapped_size()
+        return self.mappings[i].from_bytes(
+            self.read_buffers[i][start : start + self.mappings[i].mapped_size()]
+        )
 
     def get_month(self, pos):
-        return self.month[pos]
+        return self.get_item(pos, 0)
 
     def get_town(self, pos):
-        return self.town[pos]
+        return self.get_item(pos, 1)
 
     def get_floor_area_sqm(self, pos):
-        return self.floor_area_sqm[pos]
+        return self.get_item(pos, 6)
 
     def get_resale_price(self, pos):
-        return self.resale_price[pos]
+        return self.get_item(pos, 9)
 
     def unmap_town(self, index):
         return self.mappings[1].unmap_value(index)

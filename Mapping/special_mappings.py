@@ -8,31 +8,31 @@ class MonthMapper(Mapper):
 
     def mapped_size(self):
         return 2
-    
+
     def internal_map(self, value):
         if not re.match(self.pattern, value):
             return 0, f"{value} is not in the format YYYY-MM."
-        
+
         try:
             year = int(value[:4])
         except Exception as e:
             return 0, f"{value[:4]} is not a valid year."
-        
+
         try:
             month = int(value[-2:])
             if not (0 < month <= 12):
                 raise Exception() 
         except Exception as e:
             return 0, f"{value[-2:]} is not a valid month"
-        
-        mapped = year * 12 + month
+
+        mapped = year * 12 + (month - 1)
         if mapped > 2 ** 16 - 1:
             return 0, f"{value} is too big to fit into 2 bytes."
-        
+
         return mapped, None
-    
+
     def unmap_value(self, value):
-        month = value % 12
+        month = value % 12 + 1
         year = value // 12
         return str(year).zfill(4) + "-" + str(month).zfill(2)
 

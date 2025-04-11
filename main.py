@@ -84,124 +84,163 @@ if YEAR < 2014:
 MONTH = monthMapper.map_value(f"{YEAR}-0{MATRIC[-3]}")
 
 print("Loading data")
-basic_store = ColumnStore(
-    critical=[0, 1, 6, 9],
-    mappings=[
-        CharMapper(7),
-        CharMapper(15),
-        CharMapper(16),
-        CharMapper(5),
-        CharMapper(20),
-        CharMapper(12),
-        floatMapper,
-        CharMapper(22),
-        shortMapper,
-        floatMapper,
-    ],
-)
+basic_mappings = [
+    CharMapper(7),
+    CharMapper(15),
+    CharMapper(16),
+    CharMapper(5),
+    CharMapper(20),
+    CharMapper(12),
+    floatMapper,
+    CharMapper(22),
+    shortMapper,
+    floatMapper,
+]
 
-store = ColumnStore(
-    critical=[0, 1, 6, 9],
-    mappings=[
-        monthMapper,
-        townMapper,
-        FlatTypeMapper(
-            [
-                "1 ROOM",
-                "2 ROOM",
-                "3 ROOM",
-                "4 ROOM",
-                "5 ROOM",
-                "EXECUTIVE",
-                "MULTI-GENERATION",
-            ]
-        ),
-        BlockMapper(),
-        CharMapper(20),
-        StoreyRangeMapper(
-            [
-                "01 TO 03",
-                "04 TO 06",
-                "07 TO 09",
-                "10 TO 12",
-                "13 TO 15",
-                "16 TO 18",
-                "19 TO 21",
-                "22 TO 24",
-                "25 TO 27",
-                "28 TO 30",
-                "31 TO 33",
-                "34 TO 36",
-                "37 TO 39",
-                "40 TO 42",
-                "43 TO 45",
-                "46 TO 48",
-                "49 TO 51",
-            ]
-        ),
-        floatMapper,
-        FlatModelMapper(
-            [
-                "2-room",
-                "3Gen",
-                "Adjoined flat",
-                "Apartment",
-                "DBSS",
-                "Improved",
-                "Improved-Maisonette",
-                "Maisonette",
-                "Model A",
-                "Model A2",
-                "Model A-Maisonette",
-                "Multi Generation",
-                "New Generation",
-                "Premium Apartment",
-                "Premium Apartment Loft",
-                "Premium Maisonette",
-                "Simplified",
-                "Standard",
-                "Terrace",
-                "Type S1",
-                "Type S2",
-            ]
-        ),
-        shortMapper,
-        floatMapper,
-    ],
-)
+compressed_mappings = [
+    monthMapper,
+    townMapper,
+    FlatTypeMapper(
+        [
+            "1 ROOM",
+            "2 ROOM",
+            "3 ROOM",
+            "4 ROOM",
+            "5 ROOM",
+            "EXECUTIVE",
+            "MULTI-GENERATION",
+        ]
+    ),
+    BlockMapper(),
+    CharMapper(20),
+    StoreyRangeMapper(
+        [
+            "01 TO 03",
+            "04 TO 06",
+            "07 TO 09",
+            "10 TO 12",
+            "13 TO 15",
+            "16 TO 18",
+            "19 TO 21",
+            "22 TO 24",
+            "25 TO 27",
+            "28 TO 30",
+            "31 TO 33",
+            "34 TO 36",
+            "37 TO 39",
+            "40 TO 42",
+            "43 TO 45",
+            "46 TO 48",
+            "49 TO 51",
+        ]
+    ),
+    floatMapper,
+    FlatModelMapper(
+        [
+            "2-room",
+            "3Gen",
+            "Adjoined flat",
+            "Apartment",
+            "DBSS",
+            "Improved",
+            "Improved-Maisonette",
+            "Maisonette",
+            "Model A",
+            "Model A2",
+            "Model A-Maisonette",
+            "Multi Generation",
+            "New Generation",
+            "Premium Apartment",
+            "Premium Apartment Loft",
+            "Premium Maisonette",
+            "Simplified",
+            "Standard",
+            "Terrace",
+            "Type S1",
+            "Type S2",
+        ]
+    ),
+    shortMapper,
+    floatMapper,
+]
+
+critical = [0, 1, 6, 9]
 
 with open(DATAFILE, 'r') as f:
-    line = f.readline()
+    print("\n---------BASIC STORE---------")
+    columns = f.readline().split(",")
+    basic_store = ColumnStore(
+        columns=columns, mappings=basic_mappings, critical=critical
+    )
     while True:
         line = f.readline()[:-1]
         if not line:
             break
         try:
             basic_store.add_entry(line.split(","))
+        except StorageException as s:
+            print(f"Line {line}:", str(s), "Skipping...")
+    basic_store.flush_write_buffers()
+    basic_store.print_storage_stats()
+    basic_store.clear_disk()
+
+with open(DATAFILE, "r") as f:
+    print("\n---------COMPRESSED STORE---------")
+    columns = f.readline()[:-1].split(",")
+    store = ColumnStore(
+        columns=columns, mappings=compressed_mappings, critical=critical
+    )
+    while True:
+        line = f.readline()[:-1]
+        if not line:
+            break
+        try:
             store.add_entry(line.split(","))
         except StorageException as s:
             print(f"Line {line}:", str(s), "Skipping...")
+    store.flush_write_buffers()
+    store.print_storage_stats()
 
-print(
-    f"Running queries for {TOWN_NAME} from months {int(MATRIC[-3])} to {int(MATRIC[-3])+1} in {YEAR}"
-)
-query = QueryHelper(store=store)
+    print(
+        f"Running queries for {TOWN_NAME} from months {int(MATRIC[-3])} to {int(MATRIC[-3])+1} in {YEAR}"
+    )
 
-print("\n---------INDIVIDUAL SCANS---------")
-query.minimum_price(MONTH, TOWN)
-query.average_price(MONTH, TOWN)
-query.stddev_price(MONTH, TOWN)
-query.minimum_price_per_sqm(MONTH, TOWN)
-print(query.get_results())
+    print("\n---------FILTER PERMUTATIONS---------")
+    query = QueryHelper(store=store)
+    query.test_filter_permutations(MONTH, TOWN)
 
-query.clear_results()
+    reads = 0
+    print("\n---------INDIVIDUAL SCANS---------")
+    query.minimum_price(MONTH, TOWN)
+    reads += store.reads
+    print(f"{store.reads} block reads for min price")
 
-print("\n---------SHARED SCANS---------")
-query.shared_scan(MONTH, TOWN)
-print(query.get_results())
+    query.average_price(MONTH, TOWN)
+    reads += store.reads
+    print(f"{store.reads} block reads for avg price")
 
-query.clear_results()
+    query.stddev_price(MONTH, TOWN)
+    reads += store.reads
+    print(f"{store.reads} block reads for stddev price")
 
-print("\n---------VECTOR AT A TIME---------")
-query.vector_a_time(MONTH, TOWN)  # By default vector_size = 5000
-print(query.get_results())
+    query.minimum_price_per_sqm(MONTH, TOWN)
+    reads += store.reads
+    print(f"{store.reads} block reads for min price/sqm")
+    print(f"{reads} total block reads")
+    print(query.get_results())
+
+    query.clear_results()
+
+    print("\n---------SHARED SCANS---------")
+    query.shared_scan(MONTH, TOWN)
+    print(f"{store.reads} block reads")
+    print(query.get_results())
+
+    query.clear_results()
+
+    print("\n---------VECTOR AT A TIME---------")
+    query.vector_a_time(MONTH, TOWN)
+    print(f"{store.reads} block reads")
+    print(query.get_results())
+
+    store.clear_disk()
