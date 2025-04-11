@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import math
 from Mapping.mapper import MapException, Mapper
 
 BLOCK_SIZE = 4096
@@ -9,7 +10,8 @@ class StorageException(Exception):
 
 class ColumnStore:
 
-    def __init__(self, columns, mappings: list[Mapper], critical):
+    def __init__(self, columns, mappings: list[Mapper], critical, basic=False):
+        self.basic = basic
         if len(mappings) != len(columns):
             raise StorageException(
                 f"Number of columns {len(columns)} must match number of mappings {len(self.mappings)}."
@@ -28,6 +30,16 @@ class ColumnStore:
 
         self.read_pointers = [None] * len(columns)
         self.read_buffers = [b""] * len(columns)
+
+        self.town_zone_map = []
+        self.town_zmap_val = 0
+
+        self.area_zmap_min = math.inf
+        self.area_zmap_max = -math.inf
+        self.area_zone_map = []
+
+        self.month_index = [set() for _ in range(121)]
+        self.town_index = [set() for _ in range(26)]
 
     def clear_disk(self):
         self.flush_write_buffers()
@@ -52,13 +64,21 @@ class ColumnStore:
         self.write_pointers[i].write(self.write_buffers[i].ljust(4096, b"\x00"))
         self.write_buffers[i] = b""
 
+        if i == 1:
+            self.town_zone_map.append(self.town_zmap_val)
+            self.town_zmap_val = 0
+        elif i == 6:
+            self.area_zone_map.append((self.area_zmap_min, self.area_zmap_max))
+            self.area_zmap_min = math.inf
+            self.area_zmap_max = -math.inf
+
     def flush_write_buffers(self):
         for i in range(len(self.write_buffers)):
             self.flush_write_buffer(i)
             self.write_pointers[i].close()
 
     def print_storage_stats(self):
-        row_format = "{:>15}" * 2
+        row_format = "{:>20} {:>15}"
         print(row_format.format("Column", "Blocks"))
         total = 0
         for column in self.columns:
@@ -83,6 +103,11 @@ class ColumnStore:
         except MapException as e:
             raise StorageException(str(e))
 
+        if not self.basic:
+            self.area_zmap_min = min(self.area_zmap_min, tokens[6])
+            self.area_zmap_max = max(self.area_zmap_max, tokens[6])
+            self.town_zmap_val |= 1 << tokens[1]
+
         self.size += 1
         for i in range(len(tokens)):
             packed = self.mappings[i].to_bytes(tokens[i])
@@ -92,12 +117,24 @@ class ColumnStore:
 
             self.write_buffers[i] += packed
 
+        if not self.basic:
+            self.month_index[tokens[0] - 24168].add(
+                self.write_pointers[0].tell() // BLOCK_SIZE
+            )
+            self.town_index[tokens[1]].add(self.write_pointers[1].tell() // BLOCK_SIZE)
+
     def get_size(self):
         return self.size
 
-    def get_item(self, pos, i):
+    def pos_to_block(self, pos, i):
         items_per_page = BLOCK_SIZE // self.mappings[i].mapped_size()
-        block_number = pos // items_per_page
+        return pos // items_per_page
+
+    def get_zonemap_item(self, pos, i, zmap):
+        return zmap[self.pos_to_block(pos, i)]
+
+    def get_item(self, pos, i):
+        block_number = self.pos_to_block(pos, i)
         if self.read_pointers[i] is None:
             self.read_pointers[i] = open(self.columns[i], "rb")
 
@@ -106,10 +143,20 @@ class ColumnStore:
             self.read_pointers[i].seek(block_number * BLOCK_SIZE)
             self.read_buffers[i] = self.read_pointers[i].read(BLOCK_SIZE)
 
-        start = (pos % items_per_page) * self.mappings[i].mapped_size()
+        mapped_size = self.mappings[i].mapped_size()
+        items_per_page = BLOCK_SIZE // mapped_size
+        start = (pos % items_per_page) * mapped_size
         return self.mappings[i].from_bytes(
-            self.read_buffers[i][start : start + self.mappings[i].mapped_size()]
+            self.read_buffers[i][start : start + mapped_size]
         )
+
+    def get_pos_in_block(self, block, i):
+        mapped_size = self.mappings[i].mapped_size()
+        items_per_page = BLOCK_SIZE // mapped_size
+
+        start = block * items_per_page
+        end = start + items_per_page
+        return range(start, end)
 
     def get_month(self, pos):
         return self.get_item(pos, 0)
@@ -122,6 +169,27 @@ class ColumnStore:
 
     def get_resale_price(self, pos):
         return self.get_item(pos, 9)
+
+    def get_town_zmap_entry(self, pos):
+        return self.get_zonemap_item(pos, 1, self.town_zone_map)
+
+    def get_area_zmap_entry(self, pos):
+        return self.get_zonemap_item(pos, 6, self.area_zone_map)
+
+    def get_pos_has_town(self, pos, town):
+        block_number = self.pos_to_block(pos, 1)
+        return block_number in self.town_index[town]
+
+    def get_pos_has_month(self, pos, month1, month2):
+        block_number = self.pos_to_block(pos, 0)
+        month1 -= 24168
+        month2 -= 24168
+
+        for month in range(month1, min(month2 + 1, len(self.month_index))):
+            if block_number in self.month_index[month]:
+                return True
+
+        return False
 
     def unmap_town(self, index):
         return self.mappings[1].unmap_value(index)

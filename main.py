@@ -168,9 +168,9 @@ critical = [0, 1, 6, 9]
 
 with open(DATAFILE, 'r') as f:
     print("\n---------BASIC STORE---------")
-    columns = f.readline().split(",")
+    columns = f.readline()[:-1].split(",")
     basic_store = ColumnStore(
-        columns=columns, mappings=basic_mappings, critical=critical
+        columns=columns, mappings=basic_mappings, critical=critical, basic=True
     )
     while True:
         line = f.readline()[:-1]
@@ -201,13 +201,29 @@ with open(DATAFILE, "r") as f:
     store.flush_write_buffers()
     store.print_storage_stats()
 
+    # print(len(store.town_index[1]))
+    # tot = 0
+    # for i in store.town_index[1]:
+    #     tot += len(store.get_pos_in_block(i, 1))
+
+    # print(tot, tot / 4096)
+
+    # exit()
     print(
         f"Running queries for {TOWN_NAME} from months {int(MATRIC[-3])} to {int(MATRIC[-3])+1} in {YEAR}"
     )
 
-    print("\n---------FILTER PERMUTATIONS---------")
+    print("\n---------FILTER PERMUTATIONS (ZM OFF; IDX OFF)---------")
     query = QueryHelper(store=store)
-    query.test_filter_permutations(MONTH, TOWN)
+    query.test_filter_permutations(MONTH, TOWN, False, False)
+
+    print("\n---------FILTER PERMUTATIONS (ZM ON; IDX OFF)---------")
+    query = QueryHelper(store=store)
+    query.test_filter_permutations(MONTH, TOWN, True, False)
+
+    print("\n---------FILTER PERMUTATIONS (ZM OFF; IDX ON)---------")
+    query = QueryHelper(store=store)
+    query.test_filter_permutations(MONTH, TOWN, False, True)
 
     reads = 0
     print("\n---------INDIVIDUAL SCANS---------")

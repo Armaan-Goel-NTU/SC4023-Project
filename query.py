@@ -25,27 +25,47 @@ class QueryHelper:
             value = str(round(value, 2))
         self.results[category] = ",".join([year, month, town, category, value])
 
-    def filter_month(self, pos_list, month1):
+    def filter_month(self, pos_list, month1, use_index=False):
         pos2 = []
+
         for pos in pos_list:
+            if use_index:
+                if not self.store.get_pos_has_month(pos, month1, month1 + 1):
+                    continue
+
             month = self.store.get_month(pos)
             if month1 <= month <= month1 + 1:
                 pos2.append(pos)
 
         return pos2
 
-    def filter_town(self, pos_list, town):
+    def filter_town(self, pos_list, town, use_zone_map=False, use_index=False):
         pos2 = []
+
         for pos in pos_list:
+            if use_index:
+                if not self.store.get_pos_has_town(pos, town):
+                    continue
+
+            if use_zone_map:
+                zval = self.store.get_town_zmap_entry(pos)
+                if not (zval & (1 << town)):
+                    continue
+
             t = self.store.get_town(pos)
             if t == town:
                 pos2.append(pos)
 
         return pos2
 
-    def filter_area(self, pos_list):
+    def filter_area(self, pos_list, use_zone_map=False):
         pos2 = []
         for pos in pos_list:
+            if use_zone_map:
+                zmin, zmax = self.store.get_area_zmap_entry(pos)
+                if not (zmin <= 80 <= zmax):
+                    continue
+
             sqm = self.store.get_floor_area_sqm(pos)
             if sqm >= 80:
                 pos2.append(pos)
@@ -58,14 +78,8 @@ class QueryHelper:
         pos4 = self.filter_area(pos3)
         return pos4
 
-    def test_filter_permutations(self, month1, town):
-        filters = {
-            "month": lambda data: self.filter_month(data, month1),
-            "town": lambda data: self.filter_town(data, town),
-            "area": lambda data: self.filter_area(data),
-        }
-
-        row_format = "{:>15}" * 2
+    def test_filter_permutations(self, month1, town, use_zone_map, use_index):
+        row_format = "{:>20} {:>20}"
         print(row_format.format("Permutation", "Blocks"))
 
         data_range = range(self.store.get_size())
@@ -74,9 +88,23 @@ class QueryHelper:
         for perm in permutations:
             self.store.clear_read_state()
             filtered = data_range
+
+            filters = {
+                "month": lambda data: self.filter_month(
+                    data, month1, use_index=use_index
+                ),
+                "town": lambda data: self.filter_town(
+                    data, town, use_zone_map=use_zone_map, use_index=use_index
+                ),
+                "area": lambda data: self.filter_area(data, use_zone_map=use_zone_map),
+            }
+
+            reads = []
             for step in perm:
                 filtered = filters[step](filtered)
-            print(row_format.format(str(perm), self.store.reads))
+                reads.append(str(self.store.reads))
+
+            print(row_format.format(str(perm), "|".join(reads)))
 
     def minimum_price(self, month1, town, start_idx=0, stop_idx=None):
         if stop_idx is None:
