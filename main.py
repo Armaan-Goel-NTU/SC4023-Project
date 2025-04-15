@@ -1,8 +1,7 @@
 import sys
 import os
-import re
 
-from constants import assignment_towns
+from constants import assignment_towns, town, flat_type, storey_range, flat_model
 from store import ColumnStore, StorageException
 from query import QueryHelper
 from Mapping.default_mappings import *
@@ -25,36 +24,7 @@ if not re.match(pattern=pattern, string=MATRIC):
     print("Invalid Matric format. Should be A1234567B")
     sys.exit(1)
 
-townMapper = TownMapper(
-    [
-        "ANG MO KIO",
-        "BEDOK",
-        "BISHAN",
-        "BUKIT BATOK",
-        "BUKIT MERAH",
-        "BUKIT PANJANG",
-        "BUKIT TIMAH",
-        "CENTRAL AREA",
-        "CHOA CHU KANG",
-        "CLEMENTI",
-        "GEYLANG",
-        "HOUGANG",
-        "JURONG EAST",
-        "JURONG WEST",
-        "KALLANG/WHAMPOA",
-        "MARINE PARADE",
-        "PASIR RIS",
-        "PUNGGOL",
-        "QUEENSTOWN",
-        "SEMBAWANG",
-        "SENGKANG",
-        "SERANGOON",
-        "TAMPINES",
-        "TOA PAYOH",
-        "WOODLANDS",
-        "YISHUN",
-    ]
-)
+townMapper = TownMapper(town)
 
 TOWN_NAME = assignment_towns[int(MATRIC[-4])]
 TOWN = townMapper.map_value(TOWN_NAME)
@@ -87,66 +57,12 @@ basic_mappings = [
 compressed_mappings = [
     monthMapper,
     townMapper,
-    FlatTypeMapper(
-        [
-            "1 ROOM",
-            "2 ROOM",
-            "3 ROOM",
-            "4 ROOM",
-            "5 ROOM",
-            "EXECUTIVE",
-            "MULTI-GENERATION",
-        ]
-    ),
+    FlatTypeMapper(flat_type),
     BlockMapper(),
     CharMapper(20),
-    StoreyRangeMapper(
-        [
-            "01 TO 03",
-            "04 TO 06",
-            "07 TO 09",
-            "10 TO 12",
-            "13 TO 15",
-            "16 TO 18",
-            "19 TO 21",
-            "22 TO 24",
-            "25 TO 27",
-            "28 TO 30",
-            "31 TO 33",
-            "34 TO 36",
-            "37 TO 39",
-            "40 TO 42",
-            "43 TO 45",
-            "46 TO 48",
-            "49 TO 51",
-        ]
-    ),
+    StoreyRangeMapper(storey_range),
     floatMapper,
-    FlatModelMapper(
-        [
-            "2-room",
-            "3Gen",
-            "Adjoined flat",
-            "Apartment",
-            "DBSS",
-            "Improved",
-            "Improved-Maisonette",
-            "Maisonette",
-            "Model A",
-            "Model A2",
-            "Model A-Maisonette",
-            "Multi Generation",
-            "New Generation",
-            "Premium Apartment",
-            "Premium Apartment Loft",
-            "Premium Maisonette",
-            "Simplified",
-            "Standard",
-            "Terrace",
-            "Type S1",
-            "Type S2",
-        ]
-    ),
+    FlatModelMapper(flat_model),
     shortMapper,
     floatMapper,
 ]
