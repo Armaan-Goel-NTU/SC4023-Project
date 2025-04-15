@@ -1,45 +1,5 @@
+from constants import assignment_towns
 from tests.connection import get_connection
-
-assignment_towns = [
-    "BEDOK",
-    "BUKIT PANJANG",
-    "CLEMENTI",
-    "CHOA CHU KANG",
-    "HOUGANG",
-    "JURONG WEST",
-    "PASIR RIS",
-    "TAMPINES",
-    "WOODLANDS",
-    "YISHUN",
-]
-
-class ResalePricesSingapore:
-    def __init__(self, month, town, flat_type, block, street_name, storey_range, floor_area_sqm, flat_model,
-                 lease_commence_date, resale_price):
-        self.month = month
-        self.town = town
-        self.flat_type = flat_type
-        self.block = block
-        self.street_name = street_name
-        self.storey_range = storey_range
-        self.floor_area_sqm = floor_area_sqm
-        self.flat_model = flat_model
-        self.lease_commence_date = lease_commence_date
-        self.resale_price = resale_price
-
-    def to_csv_row(self) -> str:
-        return ','.join(str(value) for value in [
-            self.month,
-            self.town,
-            self.flat_type,
-            self.block,
-            self.street_name,
-            self.storey_range,
-            self.floor_area_sqm,
-            self.flat_model,
-            self.lease_commence_date,
-            self.resale_price
-        ])
 
 def query_resale_prices_singapore_results(last_three_digit: str) -> tuple[float, float, float, float]:
     if len(last_three_digit) != 3:

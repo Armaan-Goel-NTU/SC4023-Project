@@ -2,6 +2,7 @@ import sys
 import os
 import re
 
+from constants import assignment_towns
 from store import ColumnStore, StorageException
 from query import QueryHelper
 from Mapping.default_mappings import *
@@ -55,18 +56,6 @@ townMapper = TownMapper(
     ]
 )
 
-assignment_towns = [
-    "BEDOK",
-    "BUKIT PANJANG",
-    "CLEMENTI",
-    "CHOA CHU KANG",
-    "HOUGANG",
-    "JURONG WEST",
-    "PASIR RIS",
-    "TAMPINES",
-    "WOODLANDS",
-    "YISHUN",
-]
 TOWN_NAME = assignment_towns[int(MATRIC[-4])]
 TOWN = townMapper.map_value(TOWN_NAME)
 
