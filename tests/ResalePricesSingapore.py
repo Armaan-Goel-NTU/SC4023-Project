@@ -13,7 +13,7 @@ def query_resale_prices_singapore_results(last_three_digit: str) -> tuple[float,
         with conn.cursor() as cur:
             cur.execute(f'SELECT MIN(resale_price), ROUND(CAST(STDDEV_POP(resale_price) as numeric), 2), '
                         f'ROUND(CAST(AVG(resale_price) as numeric), 2), '
-                        f'ROUND(CAST(MIN(resale_price / floor_area_sqm) as numeric), 2) '
+                        f'MIN(resale_price / floor_area_sqm) '
                         f'FROM ResalePricesSingapore '
                         f'WHERE EXTRACT(YEAR FROM TO_DATE(month, \'YYYY-MM\')) BETWEEN 2014 AND 2023 '
                         f'AND RIGHT(EXTRACT(YEAR FROM TO_DATE(month, \'YYYY-MM\'))::TEXT, 1) = %s '

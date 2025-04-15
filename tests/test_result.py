@@ -78,4 +78,4 @@ def test_query_result(last_3_digit_code: str):
     assert results.get(Metrics.MIN_PRICE.value) == min_price
     assert results.get(Metrics.STDDEV.value) == float(stddev_price)
     assert results.get(Metrics.AVG_PRICE.value) == float(avg_price)
-    assert results.get(Metrics.MIN_PRICE_PER_SQM.value) == float(min_price_per_sqm)
+    assert results.get(Metrics.MIN_PRICE_PER_SQM.value) == round(float(min_price_per_sqm), 2)
