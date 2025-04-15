@@ -78,7 +78,8 @@ YEAR = int(MATRIC[-2]) + 2010
 if YEAR < 2014:
     YEAR += 10
 
-MONTH = monthMapper.map_value(f"{YEAR}-0{MATRIC[-3]}")
+month_str = "10" if f"0{MATRIC[-3]}" == "00" else f"0{MATRIC[-3]}"
+MONTH = monthMapper.map_value(f"{YEAR}-{month_str}")
 
 print("Loading data")
 basic_mappings = [

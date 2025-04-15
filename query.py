@@ -1,6 +1,7 @@
 import math
 import itertools
 
+from Enum.Metrics import Metrics
 from store import ColumnStore
 
 class QueryHelper:
@@ -23,7 +24,7 @@ class QueryHelper:
         month = month[-2:]
         if type(value) == float:
             value = str(round(value, 2))
-        self.results[category] = ",".join([year, month, town, category, value])
+        self.results[category] = ",".join([year, month, town, category.value, value])
 
     def filter_month(self, pos_list, month1, use_index=False):
         pos2 = []
@@ -110,7 +111,7 @@ class QueryHelper:
         pos4 = self.filter(month1, town, start_idx, stop_idx)
 
         if len(pos4) == 0:
-            self.add_result(month1, town, "Minimum Price", "No result")
+            self.add_result(month1, town, Metrics.MIN_PRICE, "No result")
             return math.inf
 
         min_price = math.inf
@@ -119,7 +120,7 @@ class QueryHelper:
             if price < min_price:
                 min_price = price
 
-        self.add_result(month1, town, "Minimum Price", min_price)
+        self.add_result(month1, town, Metrics.MIN_PRICE, min_price)
         return min_price
 
     def average_price(self, month1, town, start_idx=0, stop_idx=None):
@@ -130,7 +131,7 @@ class QueryHelper:
         pos4 = self.filter(month1, town, start_idx, stop_idx)
 
         if len(pos4) == 0:
-            self.add_result(month1, town, "Average Price", "No result")
+            self.add_result(month1, town, Metrics.AVG_PRICE, "No result")
             return 0, 0
 
         total_price = 0
@@ -138,7 +139,7 @@ class QueryHelper:
             price = self.store.get_resale_price(pos)
             total_price += price
 
-        self.add_result(month1, town, "Average Price", total_price / len(pos4))
+        self.add_result(month1, town, Metrics.AVG_PRICE, total_price / len(pos4))
         return total_price, len(pos4)
 
     def stddev_price(self, month1, town, start_idx=0, stop_idx=None):
@@ -153,7 +154,7 @@ class QueryHelper:
         pos4 = self.filter(month1, town, start_idx, stop_idx)
 
         if len(pos4) == 0:
-            self.add_result(month1, town, "Standard Deviation of Price", "No result")
+            self.add_result(month1, town, Metrics.STDDEV, "No result")
             return 0, 0, 0
 
         # Welford's Algorithm
@@ -169,7 +170,7 @@ class QueryHelper:
             ssd += diff * updated_diff
 
         stddev = math.sqrt(ssd / count)
-        self.add_result(month1, town, "Standard Deviation of Price", stddev)
+        self.add_result(month1, town, Metrics.STDDEV, stddev)
         return count, average, ssd
 
     def minimum_price_per_sqm(self, month1, town, start_idx=0, stop_idx=None):
@@ -180,7 +181,7 @@ class QueryHelper:
         pos4 = self.filter(month1, town, start_idx, stop_idx)
 
         if len(pos4) == 0:
-            self.add_result(month1, town, "Minimum Price per Square Meter", "No result")
+            self.add_result(month1, town, Metrics.MIN_PRICE_PER_SQM, "No result")
             return math.inf
 
         min_price_per_sqm = math.inf
@@ -192,7 +193,7 @@ class QueryHelper:
                 min_price_per_sqm = price_per_sqm
 
         self.add_result(
-            month1, town, "Minimum Price per Square Meter", min_price_per_sqm
+            month1, town, Metrics.MIN_PRICE_PER_SQM, min_price_per_sqm
         )
         return min_price_per_sqm
 
@@ -202,10 +203,10 @@ class QueryHelper:
         pos4 = self.filter(month1, town, 0, self.store.get_size())
 
         if len(pos4) == 0:
-            self.add_result(month1, town, "Minimum Price", "No result")
-            self.add_result(month1, town, "Standard Deviation of Price", "No result")
-            self.add_result(month1, town, "Average Price", "No result")
-            self.add_result(month1, town, "Minimum Price per Square Meter", "No result")
+            self.add_result(month1, town, Metrics.MIN_PRICE, "No result")
+            self.add_result(month1, town, Metrics.STDDEV, "No result")
+            self.add_result(month1, town, Metrics.AVG_PRICE, "No result")
+            self.add_result(month1, town, Metrics.MIN_PRICE_PER_SQM, "No result")
             return
 
         min_price = math.inf
@@ -235,11 +236,11 @@ class QueryHelper:
         stddev = math.sqrt(ssd / count)
         average_price = total_price / count
 
-        self.add_result(month1, town, "Minimum Price", min_price)
-        self.add_result(month1, town, "Average Price", average_price)
-        self.add_result(month1, town, "Standard Deviation of Price", stddev)
+        self.add_result(month1, town, Metrics.MIN_PRICE, min_price)
+        self.add_result(month1, town, Metrics.AVG_PRICE, average_price)
+        self.add_result(month1, town, Metrics.STDDEV, stddev)
         self.add_result(
-            month1, town, "Minimum Price per Square Meter", min_price_per_sqm
+            month1, town, Metrics.MIN_PRICE_PER_SQM, min_price_per_sqm
         )
 
     def vector_a_time(self, month1, town, vector_size=32):
@@ -289,28 +290,28 @@ class QueryHelper:
 
         # min
         if min_price == math.inf:
-            self.add_result(month1, town, "Minimum Price", "No result")
+            self.add_result(month1, town, Metrics.MIN_PRICE, "No result")
         else:
-            self.add_result(month1, town, "Minimum Price", min_price)
+            self.add_result(month1, town, Metrics.MIN_PRICE, min_price)
 
         # avg
         if price_count == 0:
-            self.add_result(month1, town, "Average Price", "No result")
+            self.add_result(month1, town, Metrics.AVG_PRICE, "No result")
         else:
-            self.add_result(month1, town, "Average Price", price_sum / price_count)
+            self.add_result(month1, town, Metrics.AVG_PRICE, price_sum / price_count)
 
         # stddev
         if stddev_count == 0:
-            self.add_result(month1, town, "Standard Deviation of Price", "No result")
+            self.add_result(month1, town, Metrics.STDDEV, "No result")
         else:
             variance = stddev_ssd / stddev_count
             stddev = math.sqrt(variance)
-            self.add_result(month1, town, "Standard Deviation of Price", stddev)
+            self.add_result(month1, town, Metrics.STDDEV, stddev)
 
         # min per sqm
         if min_price_per_sqm == math.inf:
-            self.add_result(month1, town, "Minimum Price per Square Meter", "No result")
+            self.add_result(month1, town, Metrics.MIN_PRICE_PER_SQM, "No result")
         else:
             self.add_result(
-                month1, town, "Minimum Price per Square Meter", min_price_per_sqm
+                month1, town, Metrics.MIN_PRICE_PER_SQM, min_price_per_sqm
             )
