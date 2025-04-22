@@ -10,6 +10,7 @@ from Mapping.special_mappings import *
 
 def perform_analysis(analysis_store: ColumnStore):
     analysis_store.flush_write_buffers()
+    print("\n---------COMPRESSED STORE---------")
     analysis_store.print_storage_stats()
 
     print(
@@ -152,8 +153,6 @@ with open(DATAFILE, 'r') as f:
     basic_store.clear_disk()
 
 with open(DATAFILE, "r") as f:
-    print("\n---------COMPRESSED STORE---------")
-
     columns = f.readline()[:-1].split(",")
     store = ColumnStore(
         columns=columns, mappings=compressed_mappings, critical=critical
