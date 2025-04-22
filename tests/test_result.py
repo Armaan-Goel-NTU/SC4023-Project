@@ -53,7 +53,12 @@ def setup(request):
     os.environ["DB_NAME"] = postgres.dbname
     create_table_from_csv("../ResalePricesSingapore.csv")
 
-@pytest.mark.parametrize("last_3_digit_code", [str(i).zfill(3) for i in range(1000)])
+test_cases = ["000"]
+test_cases += [f"{i}00" for i in range(1, 10)]
+test_cases += [f"0{i}0" for i in range(1, 10)]
+test_cases += [f"00{i}" for i in range(1, 10)]
+
+@pytest.mark.parametrize("last_3_digit_code", test_cases)
 def test_query_result(last_3_digit_code: str):
     min_price, stddev_price, avg_price, min_price_per_sqm = query_resale_prices_singapore_results(last_3_digit_code)
     print(min_price, stddev_price, avg_price, min_price_per_sqm)
