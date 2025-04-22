@@ -8,6 +8,74 @@ from Mapping.default_mappings import *
 from Mapping.enum_mappings import *
 from Mapping.special_mappings import *
 
+def perform_analysis(analysis_store: ColumnStore, sorted: bool = True):
+    analysis_store.flush_write_buffers()
+    print("\n---------COMPRESSED STORE---------")
+    analysis_store.print_storage_stats()
+
+    print(
+        f"\n\nRunning queries for {TOWN_NAME} from months {int(MATRIC[-3])} to {int(MATRIC[-3])+1} in {YEAR}"
+    )
+
+    if sorted:
+        print("\n---------FILTER PERMUTATIONS (ZM OFF; IDX OFF)---------")
+        analysis_query = QueryHelper(store=analysis_store)
+        analysis_query.test_filter_permutations(MONTH, TOWN, False, False)
+
+        print("\n---------FILTER PERMUTATIONS (ZM ON; IDX OFF)---------")
+        analysis_query = QueryHelper(store=analysis_store)
+        analysis_query.test_filter_permutations(MONTH, TOWN, True, False)
+
+    print("\n---------FILTER PERMUTATIONS (ZM OFF; IDX ON)---------")
+    analysis_query = QueryHelper(store=analysis_store)
+    analysis_query.test_filter_permutations(MONTH, TOWN, False, True)
+
+    print("\n---------FILTER PERMUTATIONS (ZM ON; IDX ON)---------")
+    analysis_query = QueryHelper(store=analysis_store)
+    analysis_query.test_filter_permutations(MONTH, TOWN, True, True)
+
+    if sorted:
+        reads = 0
+        print("\n---------INDIVIDUAL SCANS---------")
+        analysis_query.minimum_price(MONTH, TOWN)
+        reads += analysis_store.reads
+        print(f"{analysis_store.reads} block reads for min price")
+
+        analysis_query.average_price(MONTH, TOWN)
+        reads += analysis_store.reads
+        print(f"{analysis_store.reads} block reads for avg price")
+
+        analysis_query.stddev_price(MONTH, TOWN)
+        reads += analysis_store.reads
+        print(f"{analysis_store.reads} block reads for stddev price")
+
+        analysis_query.minimum_price_per_sqm(MONTH, TOWN)
+        reads += analysis_store.reads
+        print(f"{analysis_store.reads} block reads for min price/sqm")
+        print(f"{reads} total block reads")
+
+        analysis_results = analysis_query.get_results()
+        with open(f"ScanResult_{MATRIC}.csv", "w") as g:
+            g.write(analysis_results)
+        print(analysis_results)
+
+        analysis_query.clear_results()
+
+    print("\n---------SHARED SCANS---------")
+    analysis_query.shared_scan(MONTH, TOWN)
+    print(f"{analysis_store.reads} block reads")
+    print(analysis_query.get_results())
+
+    analysis_query.clear_results()
+
+    if sorted:
+        print("\n---------VECTOR AT A TIME---------")
+        analysis_query.vector_a_time(MONTH, TOWN)
+        print(f"{analysis_store.reads} block reads")
+        print(analysis_query.get_results())
+
+    analysis_store.clear_disk()
+
 if len(sys.argv) != 3:
     print("Usage: python3 main.py <CSV file> <Matric>")
     sys.exit(1)
@@ -88,77 +156,37 @@ with open(DATAFILE, 'r') as f:
     basic_store.clear_disk()
 
 with open(DATAFILE, "r") as f:
-    print("\n---------COMPRESSED STORE---------")
     columns = f.readline()[:-1].split(",")
     store = ColumnStore(
         columns=columns, mappings=compressed_mappings, critical=critical
     )
+    sorted_rows = []
     while True:
         line = f.readline()[:-1]
         if not line:
             break
+        sorted_rows.append(line.split(","))
         try:
             store.add_entry(line.split(","))
         except StorageException as s:
             print(f"Line {line}:", str(s), "Skipping...")
-    store.flush_write_buffers()
-    store.print_storage_stats()
 
-    print(
-        f"\n\nRunning queries for {TOWN_NAME} from months {int(MATRIC[-3])} to {int(MATRIC[-3])+1} in {YEAR}"
+    print("\n=========WITHOUT SORTING=========")
+    perform_analysis(store, False)
+
+    store_sorted = ColumnStore(
+        columns=columns, mappings=compressed_mappings, critical=critical
     )
 
-    print("\n---------FILTER PERMUTATIONS (ZM OFF; IDX OFF)---------")
-    query = QueryHelper(store=store)
-    query.test_filter_permutations(MONTH, TOWN, False, False)
+    sorted_rows.sort(key=lambda row: (row[0], row[1], row[6]))
+    for sorted_row in sorted_rows:
+        try:
+            store_sorted.add_entry(sorted_row)
+        except StorageException as s:
+            print(f"Line {sorted_row}:", str(s), "Skipping...")
 
-    print("\n---------FILTER PERMUTATIONS (ZM ON; IDX OFF)---------")
-    query = QueryHelper(store=store)
-    query.test_filter_permutations(MONTH, TOWN, True, False)
+    print("\n=========WITH SORTING=========")
+    perform_analysis(store_sorted)
 
-    print("\n---------FILTER PERMUTATIONS (ZM OFF; IDX ON)---------")
-    query = QueryHelper(store=store)
-    query.test_filter_permutations(MONTH, TOWN, False, True)
-
-    print("\n---------FILTER PERMUTATIONS (ZM ON; IDX ON)---------")
-    query = QueryHelper(store=store)
-    query.test_filter_permutations(MONTH, TOWN, True, True)
-
-    reads = 0
-    print("\n---------INDIVIDUAL SCANS---------")
-    query.minimum_price(MONTH, TOWN)
-    reads += store.reads
-    print(f"{store.reads} block reads for min price")
-
-    query.average_price(MONTH, TOWN)
-    reads += store.reads
-    print(f"{store.reads} block reads for avg price")
-
-    query.stddev_price(MONTH, TOWN)
-    reads += store.reads
-    print(f"{store.reads} block reads for stddev price")
-
-    query.minimum_price_per_sqm(MONTH, TOWN)
-    reads += store.reads
-    print(f"{store.reads} block reads for min price/sqm")
-    print(f"{reads} total block reads")
-    results = query.get_results()
-    with open(f"ScanResult_{MATRIC}.csv", "w") as g:
-        g.write(results)
-    print(results)
-
-    query.clear_results()
-
-    print("\n---------SHARED SCANS---------")
-    query.shared_scan(MONTH, TOWN)
-    print(f"{store.reads} block reads")
-    print(query.get_results())
-
-    query.clear_results()
-
-    print("\n---------VECTOR AT A TIME---------")
-    query.vector_a_time(MONTH, TOWN)
-    print(f"{store.reads} block reads")
-    print(query.get_results())
-
-    store.clear_disk()
+if __name__ == '__main__':
+    pass
