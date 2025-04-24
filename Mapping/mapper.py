@@ -2,6 +2,7 @@ from exceptions import MappingException
 
 
 class Mapper:
+    """Base class for all mappers. Handles byte-level serialization and deserialization."""
     def mapped_size(self):
         pass
 

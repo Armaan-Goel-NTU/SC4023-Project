@@ -5,6 +5,7 @@ from exceptions import InvalidMapException
 
 
 class EnumMapper(Mapper):
+    """Maps string values to unique integer indices based on a fixed list of allowed values."""
     def __init__(self, values):
         self.map = {}
         self.values = values
@@ -23,13 +24,17 @@ class EnumMapper(Mapper):
         return self.values[value]
 
 class TownMapper(EnumMapper):
+    """EnumMapper for mapping town."""
     pass
 
 class FlatTypeMapper(EnumMapper):
+    """EnumMapper for mapping flat_type."""
     pass
 
 class FlatModelMapper(EnumMapper):
+    """EnumMapper for mapping flat_model."""
     pass
 
 class StoreyRangeMapper(EnumMapper):
+    """EnumMapper for mapping storey_range."""
     pass

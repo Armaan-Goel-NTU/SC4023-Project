@@ -2,7 +2,7 @@ import sys
 import os
 
 from constants import assignment_towns, town, flat_type, storey_range, flat_model
-from store import ColumnStore, StorageException
+from store import ColumnStore
 from query import QueryHelper
 from Mapping.default_mappings import *
 from Mapping.enum_mappings import *

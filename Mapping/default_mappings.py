@@ -1,10 +1,11 @@
 import struct
 
 from Mapping.mapper import Mapper
-from exceptions import InvalidConversionException, InvalidMapException, DateOverflowException
+from exceptions import InvalidConversionException, InvalidMapException, DataOverflowException
 
 
 class FloatMapper(Mapper):
+    """Maps float values into 4-byte float representation."""
     def mapped_size(self):
         return 4
 
@@ -24,6 +25,7 @@ class FloatMapper(Mapper):
         return str(value)
 
 class CharMapper(Mapper):
+    """Maps strings to a fixed-size ASCII representation padded with null bytes."""
     def __init__(self, size):
         self.size = size
 
@@ -41,13 +43,11 @@ class CharMapper(Mapper):
     def from_bytes(self, value: bytes):
         return value.rstrip("\x00").decode("ascii")
 
-    def from_bytes(self, value):
-        return struct.unpack(">f", value)[0]
-
     def unmap_value(self, value):
         return value
 
 class ShortMapper(Mapper):
+    """Maps integers into 2-byte unsigned short representation."""
     def mapped_size(self):
         return 2
 
@@ -58,7 +58,7 @@ class ShortMapper(Mapper):
             raise InvalidConversionException(f"{value} cannot be converted to a short.")
 
         if mapped > 2 ** 16 - 1:
-            raise DateOverflowException(f"{value} is too large for a short.")
+            raise DataOverflowException(f"{value} is too large for a short.")
 
         return mapped
 

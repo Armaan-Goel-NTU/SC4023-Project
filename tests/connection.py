@@ -3,6 +3,7 @@ import os
 import psycopg2
 
 def get_connection():
+    """Establishes and returns a connection to a PostgreSQL database using environment variables."""
     host = os.getenv("DB_HOST", "localhost")
     port = os.getenv("DB_PORT", "5432")
     username = os.getenv("DB_USERNAME", "postgres")

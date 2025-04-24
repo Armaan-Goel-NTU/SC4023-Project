@@ -1,10 +1,11 @@
 import re
 
 from Mapping.mapper import Mapper
-from exceptions import InvalidDateException, DateOverflowException, InvalidBlockException
+from exceptions import InvalidDateException, DataOverflowException, InvalidBlockException
 
 
 class MonthMapper(Mapper):
+    """Maps YYYY-MM formatted strings into a 2-byte representation as (year * 12 + (month - 1))."""
     def __init__(self):
         self.pattern = re.compile(r'[0-9]{4}-[0-9]{2}')
 
@@ -29,7 +30,7 @@ class MonthMapper(Mapper):
 
         mapped = year * 12 + (month - 1)
         if mapped > 2 ** 16 - 1:
-            raise DateOverflowException(f"{value} is too big to fit into 2 bytes.")
+            raise DataOverflowException(f"{value} is too big to fit into 2 bytes.")
 
         return mapped
 
@@ -39,6 +40,7 @@ class MonthMapper(Mapper):
         return str(year).zfill(4) + "-" + str(month).zfill(2)
 
 class BlockMapper(Mapper):
+    """Maps block identifiers like "123", "123A" into a 3-byte format."""
     def __init__(self):
         self.pattern = re.compile(r"[0-9]+[A-Z]?")
 
@@ -58,7 +60,7 @@ class BlockMapper(Mapper):
         block = int(value)
 
         if block > 2 ** 16 - 1:
-            raise DateOverflowException(f"{block} too big to fit into 2 bytes.")
+            raise DataOverflowException(f"{block} too big to fit into 2 bytes.")
 
         result += int(value)
         return result

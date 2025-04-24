@@ -7,8 +7,12 @@ from exceptions import StorageException, MappingException
 BLOCK_SIZE = 4096
 
 class ColumnStore:
-
+    """
+    A disk-based column-oriented storage system for structured data.
+    Each column is stored in its own file, and records are inserted column-wise.
+    """
     def __init__(self, columns, mappings: list[Mapper], critical, basic=False):
+        """Initializes the column store."""
         self.basic = basic
         if len(mappings) != len(columns):
             raise StorageException(
@@ -39,6 +43,7 @@ class ColumnStore:
         self.month_index = [set() for _ in range(121)]
 
     def clear_disk(self):
+        """Flush buffers and delete all column files from disk."""
         self.flush_write_buffers()
         self.clear_read_state()
         for column in self.columns:
@@ -46,6 +51,7 @@ class ColumnStore:
                 os.remove(column)
 
     def clear_read_state(self):
+        """Closes all read pointers and clears read buffers."""
         self.reads = 0
         for fp in self.read_pointers:
             if fp is not None:
@@ -55,6 +61,7 @@ class ColumnStore:
         self.read_buffers = [b""] * len(self.columns)
 
     def flush_write_buffer(self, i):
+        """Flushes a single write buffer to disk for column i. Adds zone map info for town and area."""
         if self.write_buffers[i] == b"":
             return
 
@@ -70,11 +77,13 @@ class ColumnStore:
             self.area_zmap_max = -math.inf
 
     def flush_write_buffers(self):
+        """Flush all column write buffers and close their files."""
         for i in range(len(self.write_buffers)):
             self.flush_write_buffer(i)
             self.write_pointers[i].close()
 
     def print_storage_stats(self):
+        """Prints number of disk blocks used per column and total."""
         row_format = "{:>20} {:>15}"
         print(row_format.format("Column", "Blocks"))
         total = 0
@@ -85,6 +94,7 @@ class ColumnStore:
         print(row_format.format("Total", total))
 
     def add_entry(self, tokens):
+        """Adds a new row (record) to the store, mapping and writing each column's value."""
         if len(tokens) != len(self.mappings):
             raise StorageException(
                 f"Expected {self.mappings} tokens, got {len(tokens)}."
@@ -120,16 +130,20 @@ class ColumnStore:
             )
 
     def get_size(self):
+        """Returns the number of records in the store."""
         return self.size
 
     def pos_to_block(self, pos, i):
+        """Returns the block number for column `i` where position `pos` is stored."""
         items_per_page = BLOCK_SIZE // self.mappings[i].mapped_size()
         return pos // items_per_page
 
     def get_zonemap_item(self, pos, i, zmap):
+        """Retrieves the zonemap entry for column i at position pos."""
         return zmap[self.pos_to_block(pos, i)]
 
     def get_item(self, pos, i):
+        """Retrieves the decoded value from column `i` at position `pos`, loading the block into memory if needed."""
         block_number = self.pos_to_block(pos, i)
         if self.read_pointers[i] is None:
             self.read_pointers[i] = open(self.columns[i], "rb")
@@ -147,6 +161,7 @@ class ColumnStore:
         )
 
     def get_pos_in_block(self, block, i):
+        """Returns the position range covered by the given block for column `i`."""
         mapped_size = self.mappings[i].mapped_size()
         items_per_page = BLOCK_SIZE // mapped_size
 
@@ -154,6 +169,7 @@ class ColumnStore:
         end = start + items_per_page
         return range(start, end)
 
+    # GET record for specific columns:
     def get_month(self, pos):
         return self.get_item(pos, 0)
 
@@ -166,6 +182,7 @@ class ColumnStore:
     def get_resale_price(self, pos):
         return self.get_item(pos, 9)
 
+    # GET record for zonemap and index:
     def get_town_zmap_entry(self, pos):
         return self.get_zonemap_item(pos, 1, self.town_zone_map)
 
@@ -184,7 +201,9 @@ class ColumnStore:
         return False
 
     def unmap_town(self, index):
+        """Converts mapped town index back to its string representation."""
         return self.mappings[1].unmap_value(index)
 
     def unmap_month(self, month):
+        """Converts mapped month back to YYYY-MM format."""
         return self.mappings[0].unmap_value(month)

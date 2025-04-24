@@ -18,8 +18,8 @@ class InvalidDateException(MappingException):
     """Raised when a value cannot be converted to a valid date."""
     pass
 
-class DateOverflowException(MappingException):
-    """Raised when the mapped date value exceeds the byte limit."""
+class DataOverflowException(MappingException):
+    """Raised when the value exceeds the byte limit."""
     pass
 
 class StorageException(Exception):
