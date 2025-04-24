@@ -5,19 +5,24 @@ from Enum.Metrics import Metrics
 from store import ColumnStore
 
 class QueryHelper:
+    """Class for executing filtered queries on a ColumnStore and calculating statistics."""
     def __init__(self, store: ColumnStore):
+        self.results = {}
         self.store = store
         self.clear_results()
 
     def get_results(self):
+        """Returns a CSV-formatted string of statistic results."""
         return "Year,Month,town,Category,Value\n" + "\n".join(
             [self.results[cat] for cat in self.results]
         )
 
     def clear_results(self):
+        """Clears all previously stored results."""
         self.results = {}
 
     def add_result(self, month1, town, category, value):
+        """Adds a result entry to stored results dictionary in CSV format."""
         town = self.store.unmap_town(town)
         month = self.store.unmap_month(month1)
         year = month[:4]
@@ -27,6 +32,7 @@ class QueryHelper:
         self.results[category] = ",".join([year, month, town, category.value, value])
 
     def filter_month(self, pos_list, month1, use_index=False):
+        """Filters records that fall within the month range [month1, month1 + 1]."""
         pos2 = []
 
         for pos in pos_list:
@@ -41,6 +47,7 @@ class QueryHelper:
         return pos2
 
     def filter_town(self, pos_list, town, use_zone_map=False):
+        """Filters records by town."""
         pos2 = []
 
         for pos in pos_list:
@@ -56,6 +63,7 @@ class QueryHelper:
         return pos2
 
     def filter_area(self, pos_list, use_zone_map=False):
+        """Filters records where floor area >= 80 sqm."""
         pos2 = []
         for pos in pos_list:
             if use_zone_map:
@@ -70,12 +78,14 @@ class QueryHelper:
         return pos2
 
     def filter(self, month1, town, start_idx, stop_idx):
+        """Composite filter applying month, town, and area filters."""
         pos2 = self.filter_month(range(start_idx, stop_idx), month1, True)
         pos3 = self.filter_town(pos2, town, True)
         pos4 = self.filter_area(pos3)
         return pos4
 
     def test_filter_permutations(self, month1, town, use_zone_map, use_index):
+        """Evaluates the number of block reads for all permutations of month, town, and area filtering."""
         row_format = "{:>20} {:>20}"
         print(row_format.format("Permutation", "Blocks"))
 
@@ -104,6 +114,7 @@ class QueryHelper:
             print(row_format.format(str(perm), "|".join(reads)))
 
     def minimum_price(self, month1, town, start_idx=0, stop_idx=None):
+        """Computes and stores the minimum resale price for the given filters."""
         if stop_idx is None:
             self.store.clear_read_state()
             stop_idx = self.store.get_size()
@@ -124,6 +135,7 @@ class QueryHelper:
         return min_price
 
     def average_price(self, month1, town, start_idx=0, stop_idx=None):
+        """Computes and stores the average resale price for the given filters."""
         if stop_idx is None:
             self.store.clear_read_state()
             stop_idx = self.store.get_size()
@@ -143,6 +155,7 @@ class QueryHelper:
         return total_price, len(pos4)
 
     def stddev_price(self, month1, town, start_idx=0, stop_idx=None):
+        """Computes and stores the standard deviation of resale price using Welford’s algorithm for the given filters."""
         if stop_idx is None:
             self.store.clear_read_state()
             stop_idx = self.store.get_size()
@@ -174,6 +187,7 @@ class QueryHelper:
         return count, average, ssd
 
     def minimum_price_per_sqm(self, month1, town, start_idx=0, stop_idx=None):
+        """Computes and stores the minimum price per square meter for the given filters."""
         if stop_idx is None:
             self.store.clear_read_state()
             stop_idx = self.store.get_size()
@@ -198,6 +212,7 @@ class QueryHelper:
         return min_price_per_sqm
 
     def shared_scan(self, month1, town):
+        """Performs a single pass to calculate all statistics together to reduce reads."""
         self.store.clear_read_state()
 
         pos4 = self.filter(month1, town, 0, self.store.get_size())
@@ -244,6 +259,10 @@ class QueryHelper:
         )
 
     def vector_a_time(self, month1, town, vector_size=32):
+        """
+        Optimized vector-based scan, processing data in chunks of `vector_size`
+        to compute aggregated statistics in a memory-efficient manner.
+        """
         self.store.clear_read_state()
         store_size = self.store.get_size()
 

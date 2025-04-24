@@ -2,13 +2,13 @@ import sys
 import os
 
 from constants import assignment_towns, town, flat_type, storey_range, flat_model
-from store import ColumnStore, StorageException
+from store import ColumnStore
 from query import QueryHelper
 from Mapping.default_mappings import *
 from Mapping.enum_mappings import *
 from Mapping.special_mappings import *
 
-def perform_analysis(analysis_store: ColumnStore, sorted: bool = True):
+def perform_analysis(analysis_store: ColumnStore, sorted_analysis: bool = True):
     analysis_store.flush_write_buffers()
     print("\n---------COMPRESSED STORE---------")
     analysis_store.print_storage_stats()
@@ -17,7 +17,7 @@ def perform_analysis(analysis_store: ColumnStore, sorted: bool = True):
         f"\n\nRunning queries for {TOWN_NAME} from months {int(MATRIC[-3])} to {int(MATRIC[-3])+1} in {YEAR}"
     )
 
-    if sorted:
+    if sorted_analysis:
         print("\n---------FILTER PERMUTATIONS (ZM OFF; IDX OFF)---------")
         analysis_query = QueryHelper(store=analysis_store)
         analysis_query.test_filter_permutations(MONTH, TOWN, False, False)
@@ -34,7 +34,7 @@ def perform_analysis(analysis_store: ColumnStore, sorted: bool = True):
     analysis_query = QueryHelper(store=analysis_store)
     analysis_query.test_filter_permutations(MONTH, TOWN, True, True)
 
-    if sorted:
+    if sorted_analysis:
         reads = 0
         print("\n---------INDIVIDUAL SCANS---------")
         analysis_query.minimum_price(MONTH, TOWN)
@@ -68,7 +68,7 @@ def perform_analysis(analysis_store: ColumnStore, sorted: bool = True):
 
     analysis_query.clear_results()
 
-    if sorted:
+    if sorted_analysis:
         print("\n---------VECTOR AT A TIME---------")
         analysis_query.vector_a_time(MONTH, TOWN)
         print(f"{analysis_store.reads} block reads")
@@ -149,8 +149,8 @@ with open(DATAFILE, 'r') as f:
             break
         try:
             basic_store.add_entry(line.split(","))
-        except StorageException as s:
-            print(f"Line {line}:", str(s), "Skipping...")
+        except Exception as s:
+            print(f"Line {line}:", type(s).__name__, " -> ", str(s), "Skipping...")
     basic_store.flush_write_buffers()
     basic_store.print_storage_stats()
     basic_store.clear_disk()
@@ -168,8 +168,8 @@ with open(DATAFILE, "r") as f:
         sorted_rows.append(line.split(","))
         try:
             store.add_entry(line.split(","))
-        except StorageException as s:
-            print(f"Line {line}:", str(s), "Skipping...")
+        except Exception as s:
+            print(f"Line {line}:", type(s).__name__, " -> ", str(s), "Skipping...")
 
     print("\n=========WITHOUT SORTING=========")
     perform_analysis(store, False)
@@ -182,8 +182,8 @@ with open(DATAFILE, "r") as f:
     for sorted_row in sorted_rows:
         try:
             store_sorted.add_entry(sorted_row)
-        except StorageException as s:
-            print(f"Line {sorted_row}:", str(s), "Skipping...")
+        except Exception as s:
+            print(f"Line {sorted_row}:", type(s).__name__, " -> ", str(s), "Skipping...")
 
     print("\n=========WITH SORTING=========")
     perform_analysis(store_sorted)

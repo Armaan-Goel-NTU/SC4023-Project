@@ -1,7 +1,8 @@
-class MapException(Exception):
-    pass
+from exceptions import MappingException
+
 
 class Mapper:
+    """Base class for all mappers. Handles byte-level serialization and deserialization."""
     def mapped_size(self):
         pass
 
@@ -15,9 +16,10 @@ class Mapper:
         return value.to_bytes(self.mapped_size(), byteorder="big")
 
     def map_value(self, value):
-        mapped, reason = self.internal_map(value)
-        if reason:
-            raise MapException(reason)
+        try:
+            mapped = self.internal_map(value)
+        except Exception as e:
+            raise MappingException(e)
         return mapped
 
     def unmap_value(self, value):

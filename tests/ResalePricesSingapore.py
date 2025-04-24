@@ -2,6 +2,7 @@ from constants import assignment_towns
 from tests.connection import get_connection
 
 def query_resale_prices_singapore_results(last_three_digit: str) -> tuple[float, float, float, float]:
+    """Queries resale price statistics from the ResalePricesSingapore table using encoded 3-digit input."""
     if len(last_three_digit) != 3:
         raise Exception("Less than 3 digits provided!")
     town = assignment_towns[int(last_three_digit[0])]

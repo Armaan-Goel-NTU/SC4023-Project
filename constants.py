@@ -1,3 +1,4 @@
+# List of towns corresponding to the third last digit in matriculation number.
 assignment_towns = [
     "BEDOK",
     "BUKIT PANJANG",
@@ -11,6 +12,7 @@ assignment_towns = [
     "YISHUN",
 ]
 
+# List of all towns in ResalePricesSingapore.csv.
 town = [
     "ANG MO KIO",
     "BEDOK",
@@ -40,6 +42,7 @@ town = [
     "YISHUN",
 ]
 
+# List of all flat types in ResalePricesSingapore.csv.
 flat_type = [
     "1 ROOM",
     "2 ROOM",
@@ -50,6 +53,7 @@ flat_type = [
     "MULTI-GENERATION",
 ]
 
+# List of all storey ranges in ResalePricesSingapore.csv.
 storey_range = [
     "01 TO 03",
     "04 TO 06",
@@ -70,6 +74,7 @@ storey_range = [
     "49 TO 51",
 ]
 
+# List of all flat models in ResalePricesSingapore.csv.
 flat_model = [
     "2-room",
     "3Gen",

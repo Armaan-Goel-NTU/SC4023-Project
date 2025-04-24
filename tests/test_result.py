@@ -13,6 +13,7 @@ from .connection import get_connection
 postgres = PostgresContainer("postgres:16")
 
 def create_table_from_csv(csv_file_name: str, table_name: str="ResalePricesSingapore"):
+    """Creates the target table in PostgreSQL and loads data from a CSV file."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(f"""CREATE TABLE IF NOT EXISTS {table_name} (
@@ -34,6 +35,10 @@ def create_table_from_csv(csv_file_name: str, table_name: str="ResalePricesSinga
 
 @pytest.fixture(scope="module", autouse=True)
 def setup(request):
+    """
+    Pytest fixture to start the Postgres container and set environment variables.
+    Automatically tears down the container and cleans up output files after tests.
+    """
     postgres.start()
 
     def remove_container():
@@ -53,6 +58,7 @@ def setup(request):
     os.environ["DB_NAME"] = postgres.dbname
     create_table_from_csv("../ResalePricesSingapore.csv")
 
+# Test different 3-digit encodings: town index, month, and year suffix
 test_cases = ["000"]
 test_cases += [f"{i}00" for i in range(1, 10)]
 test_cases += [f"0{i}0" for i in range(1, 10)]
@@ -60,6 +66,12 @@ test_cases += [f"00{i}" for i in range(1, 10)]
 
 @pytest.mark.parametrize("last_3_digit_code", test_cases)
 def test_query_result(last_3_digit_code: str):
+    """
+    Integration test that:
+    - Calls the query_resale_prices_singapore_results function (PostgreSQL)
+    - Runs the main.py pipeline on the same input (ColumnStore implementation)
+    - Compares the output CSV from the main.py program with the database results.
+    """
     min_price, stddev_price, avg_price, min_price_per_sqm = query_resale_prices_singapore_results(last_3_digit_code)
     print(min_price, stddev_price, avg_price, min_price_per_sqm)
     matriculation_number = "A1234" + last_3_digit_code + "B"
