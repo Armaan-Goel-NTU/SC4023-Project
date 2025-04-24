@@ -9,10 +9,10 @@ class MonthMapper(Mapper):
     def __init__(self):
         self.pattern = re.compile(r'[0-9]{4}-[0-9]{2}')
 
-    def mapped_size(self):
+    def mapped_size(self) -> int:
         return 2
 
-    def internal_map(self, value):
+    def internal_map(self, value: str) -> int:
         if not re.match(self.pattern, value):
             raise InvalidDateException(f"{value} is not in the format YYYY-MM.")
 
@@ -34,20 +34,21 @@ class MonthMapper(Mapper):
 
         return mapped
 
-    def unmap_value(self, value):
+    def unmap_value(self, value: int) -> str:
         month = value % 12 + 1
         year = value // 12
         return str(year).zfill(4) + "-" + str(month).zfill(2)
+
 
 class BlockMapper(Mapper):
     """Maps block identifiers like "123", "123A" into a 3-byte format."""
     def __init__(self):
         self.pattern = re.compile(r"[0-9]+[A-Z]?")
 
-    def mapped_size(self):
+    def mapped_size(self) -> int:
         return 3
-    
-    def internal_map(self, value):
+
+    def internal_map(self, value: str) -> int:
         if not re.match(self.pattern, value):
             raise InvalidBlockException(f"{value} should be a number followed by an optional uppercase letter.")
 
@@ -65,10 +66,10 @@ class BlockMapper(Mapper):
         result += int(value)
         return result
 
-    def unmap_value(self, value):
+    def unmap_value(self, value: int) -> str:
         block = str(value & 0xFFFF)
         letter = value >> 16
         if letter != 0:
             block += chr(letter)
-        
+
         return block
