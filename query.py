@@ -7,21 +7,21 @@ from store import ColumnStore
 class QueryHelper:
     """Class for executing filtered queries on a ColumnStore and calculating statistics."""
     def __init__(self, store: ColumnStore):
-        self.results = {}
-        self.store = store
+        self.results: dict = {}
+        self.store: ColumnStore = store
         self.clear_results()
 
-    def get_results(self):
+    def get_results(self) -> str:
         """Returns a CSV-formatted string of statistic results."""
         return "Year,Month,town,Category,Value\n" + "\n".join(
             [self.results[cat] for cat in self.results]
         )
 
-    def clear_results(self):
+    def clear_results(self) -> None:
         """Clears all previously stored results."""
         self.results = {}
 
-    def add_result(self, month1, town, category, value):
+    def add_result(self, month1: int, town: int, category: Metrics, value: float|str) -> None:
         """Adds a result entry to stored results dictionary in CSV format."""
         town = self.store.unmap_town(town)
         month = self.store.unmap_month(month1)
@@ -31,7 +31,7 @@ class QueryHelper:
             value = str(round(value, 2))
         self.results[category] = ",".join([year, month, town, category.value, value])
 
-    def filter_month(self, pos_list, month1, use_index=False):
+    def filter_month(self, pos_list: list, month1: int, use_index: bool = False) -> list[int]:
         """Filters records that fall within the month range [month1, month1 + 1]."""
         pos2 = []
 
@@ -46,7 +46,7 @@ class QueryHelper:
 
         return pos2
 
-    def filter_town(self, pos_list, town, use_zone_map=False):
+    def filter_town(self, pos_list: list[int], town: int, use_zone_map: bool = False) -> list[int]:
         """Filters records by town."""
         pos2 = []
 
@@ -62,7 +62,7 @@ class QueryHelper:
 
         return pos2
 
-    def filter_area(self, pos_list, use_zone_map=False):
+    def filter_area(self, pos_list: list[int], use_zone_map: bool = False) -> list[int]:
         """Filters records where floor area >= 80 sqm."""
         pos2 = []
         for pos in pos_list:
@@ -77,14 +77,14 @@ class QueryHelper:
 
         return pos2
 
-    def filter(self, month1, town, start_idx, stop_idx):
+    def filter(self, month1: int, town: int, start_idx: int, stop_idx: int) -> list[int]:
         """Composite filter applying month, town, and area filters."""
         pos2 = self.filter_month(range(start_idx, stop_idx), month1, True)
         pos3 = self.filter_town(pos2, town, True)
         pos4 = self.filter_area(pos3)
         return pos4
 
-    def test_filter_permutations(self, month1, town, use_zone_map, use_index):
+    def test_filter_permutations(self, month1: int, town: int, use_zone_map: bool, use_index: bool) -> None:
         """Evaluates the number of block reads for all permutations of month, town, and area filtering."""
         row_format = "{:>20} {:>20}"
         print(row_format.format("Permutation", "Blocks"))
@@ -113,7 +113,7 @@ class QueryHelper:
 
             print(row_format.format(str(perm), "|".join(reads)))
 
-    def minimum_price(self, month1, town, start_idx=0, stop_idx=None):
+    def minimum_price(self, month1: int, town: int, start_idx: int = 0, stop_idx: int = None) -> float:
         """Computes and stores the minimum resale price for the given filters."""
         if stop_idx is None:
             self.store.clear_read_state()
@@ -134,7 +134,7 @@ class QueryHelper:
         self.add_result(month1, town, Metrics.MIN_PRICE, min_price)
         return min_price
 
-    def average_price(self, month1, town, start_idx=0, stop_idx=None):
+    def average_price(self, month1: int, town: int, start_idx: int = 0, stop_idx: int = None) -> (float, int):
         """Computes and stores the average resale price for the given filters."""
         if stop_idx is None:
             self.store.clear_read_state()
@@ -154,7 +154,7 @@ class QueryHelper:
         self.add_result(month1, town, Metrics.AVG_PRICE, total_price / len(pos4))
         return total_price, len(pos4)
 
-    def stddev_price(self, month1, town, start_idx=0, stop_idx=None):
+    def stddev_price(self, month1: int, town: int, start_idx: int = 0, stop_idx: int = None) -> (int, float, float):
         """Computes and stores the standard deviation of resale price using Welford’s algorithm for the given filters."""
         if stop_idx is None:
             self.store.clear_read_state()
@@ -186,7 +186,7 @@ class QueryHelper:
         self.add_result(month1, town, Metrics.STDDEV, stddev)
         return count, average, ssd
 
-    def minimum_price_per_sqm(self, month1, town, start_idx=0, stop_idx=None):
+    def minimum_price_per_sqm(self, month1: int, town: int, start_idx: int = 0, stop_idx: int = None) -> float:
         """Computes and stores the minimum price per square meter for the given filters."""
         if stop_idx is None:
             self.store.clear_read_state()
@@ -211,7 +211,7 @@ class QueryHelper:
         )
         return min_price_per_sqm
 
-    def shared_scan(self, month1, town):
+    def shared_scan(self, month1: int, town: int) -> None:
         """Performs a single pass to calculate all statistics together to reduce reads."""
         self.store.clear_read_state()
 
@@ -258,7 +258,7 @@ class QueryHelper:
             month1, town, Metrics.MIN_PRICE_PER_SQM, min_price_per_sqm
         )
 
-    def vector_a_time(self, month1, town, vector_size=32):
+    def vector_a_time(self, month1: int, town: int, vector_size: int = 32) -> None:
         """
         Optimized vector-based scan, processing data in chunks of `vector_size`
         to compute aggregated statistics in a memory-efficient manner.
