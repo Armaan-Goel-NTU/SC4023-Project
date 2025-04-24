@@ -1,6 +1,8 @@
 import re
 
 from Mapping.mapper import Mapper
+from exceptions import InvalidDateException, DateOverflowException, InvalidBlockException
+
 
 class MonthMapper(Mapper):
     def __init__(self):
@@ -11,25 +13,25 @@ class MonthMapper(Mapper):
 
     def internal_map(self, value):
         if not re.match(self.pattern, value):
-            return 0, f"{value} is not in the format YYYY-MM."
+            raise InvalidDateException(f"{value} is not in the format YYYY-MM.")
 
         try:
             year = int(value[:4])
-        except Exception as e:
-            return 0, f"{value[:4]} is not a valid year."
+        except Exception:
+            raise InvalidDateException(f"{value[:4]} is not a valid year.")
 
         try:
             month = int(value[-2:])
             if not (0 < month <= 12):
-                raise Exception() 
-        except Exception as e:
-            return 0, f"{value[-2:]} is not a valid month"
+                raise Exception()
+        except Exception:
+            raise InvalidDateException(f"{value[-2:]} is not a valid month")
 
         mapped = year * 12 + (month - 1)
         if mapped > 2 ** 16 - 1:
-            return 0, f"{value} is too big to fit into 2 bytes."
+            raise DateOverflowException(f"{value} is too big to fit into 2 bytes.")
 
-        return mapped, None
+        return mapped
 
     def unmap_value(self, value):
         month = value % 12 + 1
@@ -45,8 +47,8 @@ class BlockMapper(Mapper):
     
     def internal_map(self, value):
         if not re.match(self.pattern, value):
-            return 0, f"{value} should be a number followed by an optional uppercase letter."
-        
+            raise InvalidBlockException(f"{value} should be a number followed by an optional uppercase letter.")
+
         result = 0
         if ord('A') <= ord(value[-1]) <= ord('Z'):
             result = ord(value[-1])
@@ -56,10 +58,10 @@ class BlockMapper(Mapper):
         block = int(value)
 
         if block > 2 ** 16 - 1:
-            return 0, f"{block} too big to fit into 2 bytes."
-        
+            raise DateOverflowException(f"{block} too big to fit into 2 bytes.")
+
         result += int(value)
-        return result, None
+        return result
 
     def unmap_value(self, value):
         block = str(value & 0xFFFF)

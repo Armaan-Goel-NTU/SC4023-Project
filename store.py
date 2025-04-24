@@ -1,12 +1,10 @@
 from pathlib import Path
 import os
 import math
-from Mapping.mapper import MapException, Mapper
+from Mapping.mapper import Mapper
+from exceptions import StorageException, MappingException
 
 BLOCK_SIZE = 4096
-
-class StorageException(Exception):
-    pass
 
 class ColumnStore:
 
@@ -99,8 +97,8 @@ class ColumnStore:
         try:
             for i in range(len(tokens)):
                 tokens[i] = self.mappings[i].map_value(tokens[i])
-        except MapException as e:
-            raise StorageException(str(e))
+        except MappingException as e:
+            raise StorageException(f"Unable to store row due to error: {str(e)}")
 
         if not self.basic:
             self.area_zmap_min = min(self.area_zmap_min, tokens[6])

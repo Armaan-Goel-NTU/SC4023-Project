@@ -1,6 +1,7 @@
 import struct
 
 from Mapping.mapper import Mapper
+from exceptions import InvalidConversionException, InvalidMapException, DateOverflowException
 
 
 class FloatMapper(Mapper):
@@ -9,9 +10,9 @@ class FloatMapper(Mapper):
 
     def internal_map(self, value):
         try:
-            return float(value), None
-        except Exception as e:
-            return 0, f"{value} cannot be converted to a float."
+            return float(value)
+        except Exception:
+            raise InvalidConversionException(f"{value} cannot be converted to a float.")
 
     def to_bytes(self, value: float):
         return struct.pack(">f", value)
@@ -31,8 +32,8 @@ class CharMapper(Mapper):
 
     def internal_map(self, value):
         if len(value) > self.size:
-            return "", f"{value} is longer than fixed size {self.size}"
-        return value, None
+            raise InvalidMapException(f"{value} is longer than fixed size {self.size}")
+        return value
 
     def to_bytes(self, value: str):
         return value.encode("ascii").ljust(self.mapped_size(), b"\x00")
@@ -51,16 +52,15 @@ class ShortMapper(Mapper):
         return 2
 
     def internal_map(self, value):
-        mapped = 0
         try:
             mapped = int(value)
-        except Exception as e:
-            return 0, f"{value} cannot be converted to a short."
+        except Exception:
+            raise InvalidConversionException(f"{value} cannot be converted to a short.")
 
         if mapped > 2 ** 16 - 1:
-            return 0, f"{value} is too large for a short."
+            raise DateOverflowException(f"{value} is too large for a short.")
 
-        return mapped, None
+        return mapped
 
     def unmap_value(self, value):
         return str(value)

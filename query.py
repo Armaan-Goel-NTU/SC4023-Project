@@ -6,6 +6,7 @@ from store import ColumnStore
 
 class QueryHelper:
     def __init__(self, store: ColumnStore):
+        self.results = None
         self.store = store
         self.clear_results()
 
