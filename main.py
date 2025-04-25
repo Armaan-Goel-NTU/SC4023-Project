@@ -9,6 +9,7 @@ from Mapping.enum_mappings import *
 from Mapping.special_mappings import *
 
 def perform_analysis(analysis_store: ColumnStore, sorted_analysis: bool = True):
+    """Perform full analysis on a given store"""
     analysis_store.flush_write_buffers()
     print("\n---------COMPRESSED STORE---------")
     analysis_store.print_storage_stats()
@@ -17,6 +18,7 @@ def perform_analysis(analysis_store: ColumnStore, sorted_analysis: bool = True):
         f"\n\nRunning queries for {TOWN_NAME} from months {int(MATRIC[-3])} to {int(MATRIC[-3])+1} in {YEAR}"
     )
 
+    # Run different filter permutations to analyze block read impact
     if sorted_analysis:
         print("\n---------FILTER PERMUTATIONS (ZM OFF; IDX OFF)---------")
         analysis_query = QueryHelper(store=analysis_store)
@@ -34,6 +36,7 @@ def perform_analysis(analysis_store: ColumnStore, sorted_analysis: bool = True):
     analysis_query = QueryHelper(store=analysis_store)
     analysis_query.test_filter_permutations(MONTH, TOWN, True, True)
 
+    # Run and analyze block read for individual scans
     if sorted_analysis:
         reads = 0
         print("\n---------INDIVIDUAL SCANS---------")
@@ -61,6 +64,7 @@ def perform_analysis(analysis_store: ColumnStore, sorted_analysis: bool = True):
 
         analysis_query.clear_results()
 
+    # Run and analyze block read for shared scans
     print("\n---------SHARED SCANS---------")
     analysis_query.shared_scan(MONTH, TOWN)
     print(f"{analysis_store.reads} block reads")
@@ -68,6 +72,7 @@ def perform_analysis(analysis_store: ColumnStore, sorted_analysis: bool = True):
 
     analysis_query.clear_results()
 
+    # Run and analyze block read for vector-at-a-time
     if sorted_analysis:
         print("\n---------VECTOR AT A TIME---------")
         analysis_query.vector_a_time(MONTH, TOWN)
@@ -76,6 +81,7 @@ def perform_analysis(analysis_store: ColumnStore, sorted_analysis: bool = True):
 
     analysis_store.clear_disk()
 
+# Check command-line arguments
 if len(sys.argv) != 3:
     print("Usage: python3 main.py <CSV file> <Matric>")
     sys.exit(1)
@@ -87,11 +93,11 @@ if not os.path.isfile(DATAFILE):
 
 MATRIC = sys.argv[2]
 pattern = re.compile(r'[A-Z][0-9]{7}[A-Z]')
-
 if not re.match(pattern=pattern, string=MATRIC):
     print("Invalid Matric format. Should be A1234567B")
     sys.exit(1)
 
+# Map values
 townMapper = TownMapper(town)
 
 TOWN_NAME = assignment_towns[int(MATRIC[-4])]
@@ -109,6 +115,8 @@ month_str = "10" if f"0{MATRIC[-3]}" == "00" else f"0{MATRIC[-3]}"
 MONTH = monthMapper.map_value(f"{YEAR}-{month_str}")
 
 print("Loading data")
+
+# Define mappings for basic and compressed stores
 basic_mappings = [
     CharMapper(7),
     CharMapper(15),
@@ -135,8 +143,10 @@ compressed_mappings = [
     floatMapper,
 ]
 
+# Define columns that must not be empty
 critical = [0, 1, 6, 9]
 
+# Experiments on column store
 with open(DATAFILE, 'r') as f:
     print("\n---------BASIC STORE---------")
     columns = f.readline()[:-1].split(",")
